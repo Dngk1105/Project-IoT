@@ -12,6 +12,9 @@ mqtt_config = MQTTConfig(
 
 mqtt = FastMQTT(config=mqtt_config)
 
+# Biến global lưu trạng thái kết nối MQTT an toàn
+is_mqtt_connected = False
+
 # 2. Quản lý vòng đời của ứng dụng FastAPI
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -23,11 +26,12 @@ async def lifespan(app: FastAPI):
 
 # 3. Khởi tạo FastAPI
 app = FastAPI(lifespan=lifespan, title="HUST IoT Assistant - Central Node")
-mqtt.init_app(app)
 
 # 4. Các sự kiện (Callbacks) của MQTT
 @mqtt.on_connect()
 def connect(client, flags, rc, properties):
+    global is_mqtt_connected
+    is_mqtt_connected = True
     print("[MQTT] Đã kết nối tới Broker thành công!")
     
     # Đăng ký lắng nghe LWT và Telemetry từ ESP32
@@ -49,6 +53,8 @@ async def message(client, topic, payload, qos, properties):
 
 @mqtt.on_disconnect()
 def disconnect(client, packet, exc=None):
+    global is_mqtt_connected
+    is_mqtt_connected = False
     print("[MQTT] Mất kết nối tới Broker!")
 
 @mqtt.on_subscribe()
@@ -60,5 +66,5 @@ def subscribe(client, mid, qos, properties):
 async def root():
     return {
         "status": "Backend API đang chạy",
-        "mqtt_connected": mqtt.client._connected if mqtt.client else False
+        "mqtt_connected": is_mqtt_connected
     }
