@@ -1,0 +1,13 @@
+services:
+  mqtt_broker:
+    image: eclipse-mosquitto:latest
+    container_name: mqtt_mosquitto
+    ports:
+      - "1883:1883"  # Ánh xạ port TCP ra Windows host:container
+      - "9001:9001"  # Ánh xạ port WebSocket ra Windows
+    volumes:
+      # Đồng bộ thư mục Windows (bên trái) vào thư mục của Docker (bên phải)
+      - ./mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - ./mosquitto/data:/mosquitto/data
+      - ./mosquitto/log:/mosquitto/log
+    restart: unless-stopped
