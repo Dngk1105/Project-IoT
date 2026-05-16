@@ -1,0 +1,61 @@
+IoT-project/                     # Thư mục gốc dự án
+│
+├── .gitignore                   # Chặn commit các file rác, .env, venv,... (đã có sẵn)
+├── README.md                    # File hướng dẫn chạy toàn bộ dự án
+├── MASTER_DOCS.md               # Tài liệu đặc tả kỹ thuật (Bản huynh vừa chốt)
+│
+├── docs/                        # Tài liệu bổ sung
+│   ├── git_github_workflow_2nguoi.md # Workflow Git & GitHub cho team 2 dev (đã có sẵn)
+│   ├── mqtt_topic_tree.md       # Bảng tra cứu MQTT
+│   ├── database_schema.png      # Sơ đồ quan hệ Database
+│   └── hardware_wiring.pdf      # Sơ đồ nối dây ESP32 (Sơ đồ chân I2S, MPU...)
+│
+├── esp/                         # 👉 KHU VỰC CỦA DEV 1 (ESP32 Firmware)
+│   ├── platformio.ini           # Cấu hình chip N16R8, framework espidf (đã có sẵn)
+│   ├── partitions_16MB.csv      # Bảng phân vùng bộ nhớ (App, Data, NVS)
+│   ├── sdkconfig.defaults       # Cấu hình bật PSRAM, bật DMA
+│   ├── data/                    # Chứa file nạp vào LittleFS (vd: startup.mp3)
+│   ├── include/                 # Khai báo Header (.h)
+│   │   ├── config.h             # Chứa thông số Pin, thông số WiFi mặc định
+│   │   ├── mqtt_handler.h       
+│   │   └── audio_i2s.h          
+│   └── src/                     # Code chính (.cpp, .c)
+│       ├── CMakeLists.txt       # File đăng ký components cho ESP-IDF (đã có sẵn)
+│       ├── main.cpp             # Task tĩnh, RTOS config
+│       ├── mqtt_handler.cpp     # Xử lý sự kiện nhận tin nhắn MQTT
+│       ├── audio_i2s.cpp        # Cấu hình Mic, Loa, DMA
+│       └── wake_word.cpp        # Thuật toán chạy mô hình ESP-SR
+│
+└── server/                      # 👉 KHU VỰC CỦA DEV 2 (Server & UI)
+    ├── infrastructure/          # Cấu hình hạ tầng
+    │   ├── docker-compose.yml   # Khởi chạy Mosquitto Broker qua Docker (đã có sẵn)
+    │   └── mosquitto/
+    │       ├── config/
+    │       │   └── mosquitto.conf # Cấu hình port 1883 và 9001
+    │       ├── data/            # (Tự sinh) Lưu trữ data MQTT
+    │       └── log/             # (Tự sinh) Lưu log của Broker
+    │
+    ├── backend/                 # API Server (Python FastAPI)
+    │   ├── .env                 # 🔴 Chứa mật khẩu, API Key (Tuyệt đối không commit)
+    │   ├── requirements.txt     # Các thư viện: fastapi, gmqtt, pydantic (đã có sẵn)
+    │   ├── main.py              # File khởi tạo FastAPI, mqtt_config (đã có sẵn)
+    │   ├── core/                # Các module lõi
+    │   │   ├── mqtt_client.py   # Lắng nghe/Gửi bản tin lên Mosquitto
+    │   │   └── scheduler.py     # Cấu hình APScheduler chạy nền
+    │   ├── api/                 # Các API nội bộ cho frontend
+    │   │   └── routes.py
+    │   ├── services/            # Module logic nặng
+    │   │   ├── hust_crawler.py  # Script cào dữ liệu sinh viên
+    │   │   ├── llm_engine.py    # Giao tiếp với Gemini/OpenAI
+    │   │   └── schedule_alg.py  # Thuật toán sắp xếp lịch tự động
+    │   └── models/              # Định nghĩa cấu trúc Database (SQLAlchemy)
+    │       ├── schema.py        # Các cấu trúc Pydantic để validate JSON
+    │       └── database.py      # Kết nối SQLite/PostgreSQL
+    │
+    └── frontend/                # Web Dashboard quản lý
+        ├── index.html           # Layout chính
+        ├── css/
+        │   └── style.css
+        └── js/
+            ├── app.js           # Xử lý logic nút bấm, biểu đồ
+            └── mqtt_ws.js       # Kết nối Mosquitto qua Websocket
