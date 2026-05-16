@@ -222,7 +222,7 @@ __marimo__/
 .streamlit/secrets.toml
 
 #ignore file data, log của mqtt broker
-server/mosquitto/data/
-server/mosquitto/log/
+server/infrastructure/mosquitto/data/
+server/infrastructure/mosquitto/log/
 
-server/mosquitto/config/passwd
+server/infrastructure/mosquitto/config/passwd
