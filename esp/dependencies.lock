@@ -12,7 +12,7 @@ dependencies:
   idf:
     source:
       type: idf
-    version: 6.0.1
+    version: 5.5.3
 direct_dependencies:
 - espressif/mqtt
 manifest_hash: a43680e87670f7b9031ffb8d22f531b2e9b0f68d18c59965476575b386b4471e
