@@ -31,6 +31,25 @@ bool mqtt_is_connected(void);
  */
 esp_mqtt_client_handle_t mqtt_get_client(void);
 
+/**
+ * @brief Publish dữ liệu lên một topic
+ * @param topic Tên topic cần publish
+ * @param payload Dữ liệu cần gửi
+ * @param len Chiều dài dữ liệu (nếu là chuỗi string có thể để 0)
+ * @param qos Chất lượng dịch vụ (0, 1, 2)
+ * @param retain Cờ giữ lại tin nhắn (0 hoặc 1)
+ * @return Message ID nếu thành công, -1 nếu thất bại
+ */
+int mqtt_handler_publish(const char *topic, const char *payload, int len, int qos, int retain);
+
+/**
+ * @brief Subscribe một topic
+ * @param topic Tên topic cần theo dõi
+ * @param qos Chất lượng dịch vụ (0, 1, 2)
+ * @return Message ID nếu thành công, -1 nếu thất bại
+ */
+int mqtt_handler_subscribe(const char *topic, int qos);
+
 #ifdef __cplusplus
 }
 #endif

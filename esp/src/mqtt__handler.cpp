@@ -31,10 +31,10 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         {
             ESP_LOGI(TAG, "MQTT Connected to Broker!");
             is_connected = true;
-                // Đăng ký các topic cần Sub (VD: Lệnh từ server)
-                // char cmd_topic[64];
-                // snprintf(cmd_topic, sizeof(cmd_topic), "device/%s/commands/#", device_mac_str);
-                // esp_mqtt_client_subscribe(mqtt_client, cmd_topic, 1);
+                // Đăng ký các topic liên quan/gửi tới nó
+                char cmd_topic[64];
+                snprintf(cmd_topic, sizeof(cmd_topic), "device/%s/#", device_mac_str);
+                mqtt_handler_subscribe(cmd_topic, 1);
     
                 //Publish Birth Message ngay khi kết nối
                 char birth_payload[128];
@@ -43,7 +43,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
                 snprintf(birth_payload, sizeof(birth_payload), "{\"status\":\"online\",\"timestamp\":%lu}", current_time);
                 
                 // Publish Birth Message (topic, payload, len, qos, retain)
-                esp_mqtt_client_publish(mqtt_client, status_topic, birth_payload, 0, 1, 1);
+                mqtt_handler_publish(status_topic, birth_payload, 0, 1, 1);
             ESP_LOGI(TAG, "Published Birth Message to %s", status_topic);
             break;
         }
@@ -128,6 +128,58 @@ void mqtt_handler_start(void) {
     } else {
         ESP_LOGE(TAG, "MQTT Client not initialized!");
     }
+}
+
+/* =========================================================================
+ * THIẾT LẬP CÁC HÀM PUB/SUB
+ * ========================================================================= */
+
+ int mqtt_handler_publish(const char *topic, const char* payload, int len, int qos, int retain){
+    if (!mqtt_is_connected()) {
+        ESP_LOGW(TAG, "Bỏ qua Publish: MQTT đang mất kết nối. Topic: %s", topic);
+        return -1;
+    }
+
+    if (mqtt_client == NULL || topic == NULL || payload == NULL) {
+        ESP_LOGE(TAG, "Tham số Publish không hợp lệ (Client, Topic hoặc Payload bị NULL)");
+        return -1;
+    }
+    //Kiểm tra len payload
+    if (len <= 0) {
+        len = strlen(payload);
+    }
+
+    //API gốc của ESP-IDF
+    int msg_id = esp_mqtt_client_publish(mqtt_client, topic, payload, len, qos, retain);
+    
+    if (msg_id < 0) {
+        ESP_LOGE(TAG, "Gửi tin nhắn thất bại lên topic: %s", topic);
+    } else {
+        ESP_LOGI(TAG, "Đã gửi tin nhắn thành công, msg_id=%d, Topic=%s", msg_id, topic);
+    }
+
+    return msg_id;
+}
+int mqtt_handler_subscribe(const char *topic, int qos){
+    if (!mqtt_is_connected()){
+        ESP_LOGW(TAG, "Bỏ qua Subscribe: MQTT đang mất kết nối. Topic: %s", topic);
+        return -1;
+    }
+
+    if (mqtt_client == NULL || topic == NULL) {
+        ESP_LOGE(TAG, "Tham số Subscribe không hợp lệ (Client hoặc Topic bị NULL)");
+        return -1;
+    }
+
+    int msg_id = esp_mqtt_client_subscribe(mqtt_client, topic, qos);
+    
+    if (msg_id < 0) {
+        ESP_LOGE(TAG, "Đăng ký theo dõi thất bại topic: %s", topic);
+    } else {
+        ESP_LOGI(TAG, "Gửi yêu cầu đăng ký thành công, msg_id=%d, Topic=%s", msg_id, topic);
+    }
+
+    return msg_id;
 }
 
 bool mqtt_is_connected(void) {
