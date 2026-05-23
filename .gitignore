@@ -228,3 +228,4 @@ server/infrastructure/mosquitto/log/
 server/infrastructure/mosquitto/config/passwd
 
 managed_components/
+esp/include/config.h
