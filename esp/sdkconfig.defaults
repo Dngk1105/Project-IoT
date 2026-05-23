@@ -10,3 +10,6 @@ CONFIG_SPIRAM_SPEED_80M=y
 # Tùy chọn: Sử dụng PSRAM cho luồng lệnh và dữ liệu Read-Only để tiết kiệm SRAM nội
 CONFIG_SPIRAM_FETCH_INSTRUCTIONS=y
 CONFIG_SPIRAM_RODATA=y
+
+# Bat MQTT 5.0
+CONFIG_MQTT_PROTOCOL_5=y

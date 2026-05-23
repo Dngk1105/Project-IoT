@@ -1,3 +1,6 @@
 fastapi[standard]
-uvicorn
-fastapi-mqtt
+uvicorn>=0.24.0
+fastapi-mqtt>=1.1.1
+gmqtt>=0.6.12
+pydantic>=2.4.0
+pydantic-settings>=2.0.0
