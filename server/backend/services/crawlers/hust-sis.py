@@ -13,7 +13,7 @@ async def renew_session():
         context = await browser.new_context()
         page = await context.new_page()
 
-        print("[HỆ THỐNG] Đang mở SIS. Huynh vui lòng đăng nhập qua Microsoft SSO...")
+        print("Đang mở SIS. Đăng nhập nhé")
         await page.goto(TARGET_URL)
 
         try:
@@ -35,7 +35,6 @@ async def renew_session():
 
 
 async def crawl_timetable():
-    """Hàm worker chạy ngầm hút data"""
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
         
@@ -43,14 +42,14 @@ async def crawl_timetable():
         context = await browser.new_context(storage_state=STATE_FILE)
         page = await context.new_page()
 
-        print("[WORKER] Đang nạp trang thời khóa biểu...")
+        print("Đang nạp trang thời khóa biểu...")
         await page.goto(TARGET_URL, wait_until="networkidle")
 
         try:
-            print("[WORKER] Đang đợi thẻ Grid View DevExpress...")
+            print("Đang đợi thẻ Grid View DevExpress...")
             await page.wait_for_selector('tr[class*="dxgvDataRow_"]', timeout=15000)
         except Exception:
-            print("[CẢNH BÁO] DOM Timeout. Session Microsoft có thể đã bị invalid.")
+            print("DOM Timeout. Session thể đã bị invalid.")
             await browser.close()
             return [] # Trả về mảng rỗng để trigger luồng renew
 
@@ -58,7 +57,7 @@ async def crawl_timetable():
 
         # Parse DOM Node
         rows = await page.locator('tr[class*="dxgvDataRow_"]').all()
-        print(f"[WORKER] Mount thành công {len(rows)} node dữ liệu. Tiến hành bóc tách...")
+        print(f"Mount thành công {len(rows)} node dữ liệu. Tiến hành bóc tách...")
 
         for row in rows:
             cols = await row.locator('td').all_inner_texts()
@@ -90,32 +89,28 @@ async def crawl_timetable():
 async def main_scheduler():
     """Hàm điều phối luồng thực thi chính"""
     
-    # 1. Boot check: File state chưa có thì ép tạo
     if not STATE_FILE.exists():
-        print("[INIT] Missing state file. Kích hoạt renew_session()...")
+        print("Missing state file. Kích hoạt renew_session()...")
         await renew_session()
         
         if not STATE_FILE.exists():
-            print("[FATAL] Không thể khởi tạo session. Exiting...")
+            print("Không thể khởi tạo session. Exiting...")
             return
 
-    # 2. Thực thi worker
     data = await crawl_timetable()
     
-    # 3. Fallback logic: Cào trượt do session chết
     if not data:
-        print("[FALLBACK] Cache miss hoặc token expired. Refreshing state...")
+        print("Cache miss hoặc token expired. Refreshing state...")
         await renew_session()
         
-        print("[FALLBACK] Retry payload injection...")
+        print("Retry payload injection...")
         data = await crawl_timetable()
         
         if not data:
-            print("[FATAL] Retry failed. Check lại cấu trúc mạng hoặc DOM của server.")
+            print("Retry failed. Check lại cấu trúc mạng hoặc DOM của server.")
             return
 
-    # 4. Success Pipeline
-    print(f"\n[SUCCESS] Parse hoàn tất {len(data)} object. Sẵn sàng pipe vào Database.")
+    print(f"\nParse hoàn tất {len(data)} object. Sẵn sàng pipe vào Database.")
     for item in data:
         print(item)
 

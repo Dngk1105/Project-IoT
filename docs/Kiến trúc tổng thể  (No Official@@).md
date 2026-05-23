@@ -73,29 +73,13 @@ Mục tiêu:
 * ESP32 vẫn báo thức đúng giờ ngay cả khi mất kết nối mạng.
 
 
-### ACK xác nhận ghi dữ liệu
+### ACK xác nhận ghi dữ liệu (Ứng dụng MQTT v5)
 
-Sau khi ESP32 ghi thành công dữ liệu lịch trình xuống LittleFS:
+Sau khi ESP32 ghi thành công dữ liệu lịch trình xuống LittleFS, hệ thống sử dụng cơ chế Request-Response của MQTT v5 để báo cáo:
 
-* ESP32 sẽ publish ACK xác nhận lên MQTT.
-* ACK giúp Server biết dữ liệu đã thực sự được lưu xuống flash.
-* ACK này độc lập với ACK của MQTT QoS.
-
-Lý do không chỉ sử dụng QoS 2:
-
-* QoS 2 chỉ đảm bảo bản tin MQTT được nhận đúng một lần.
-* QoS 2 không đảm bảo dữ liệu đã được ghi thành công vào LittleFS.
-* ACK ứng dụng giúp xác nhận toàn bộ pipeline:
-
-```text
-Broker nhận bản tin
-    ↓
-ESP32 parse JSON
-    ↓
-ESP32 ghi LittleFS thành công
-    ↓
-ESP32 publish ACK
-```
+* Khi Server đẩy lịch xuống, bản tin `Cmd_Sync` [QoS 2] sẽ đính kèm thuộc tính `Response_Topic` (VD: `ack/esp1`) và `Correlation_Data` (VD: `sync_789`).
+* ESP32 xử lý xong sẽ publish một bản tin ACK [QoS 1] vào đúng `Response_Topic` đó, trả lại chính xác `Correlation_Data` và Payload báo trạng thái (`SUCCESS` hoặc `FLASH_ERR`).
+* ACK ở tầng ứng dụng này giúp Server biết chắc chắn dữ liệu đã nằm an toàn trong bộ nhớ Flash, độc lập hoàn toàn với ACK của mạng (PUBCOMP của QoS 2).
 ---
 
 ## 1.4. Device Shadow & Telemetry
@@ -118,6 +102,11 @@ ESP32 publish ACK
   *  cường độ đỉnh âm thanh (audio_peak_db) 
 * Đóng gói dữ liệu thành JSON
 * Gửi trạng thái lên Server
+
+
+### Software Timer (Voice Watchdog)
+* Khi thiết bị chuyển sang trạng thái streaming âm thanh (`STATE_STREAM_UP`) lên Cloud, ESP32 sẽ kích hoạt một Software Timer (VD: 5s timeout).
+* Nếu kết nối Wi-Fi bị drop hoặc Server không phản hồi luồng TTS xuống trong thời gian này, ngắt Timer sẽ nổ: thiết bị lập tức xả buffer âm thanh, ngắt kết nối dở dang và tự động phát audio cảnh báo mạng từ bộ nhớ nội bộ, sau đó fallback về trạng thái `STATE_IDLE`.
 
 ### MQTT Responsibilities
 
@@ -142,13 +131,11 @@ Mosquitto chạy độc lập trong Docker Container.
 
 ## 2.1. TCP Port 1883
 
-Kênh truyền thông không mã hóa dành riêng cho ESP32 và Server Core. Đảm bảo băng thông và độ trễ thấp nhất để truyền tải:
+Kênh truyền thông không mã hóa dành riêng cho ESP32 và Server Core, áp dụng phân luồng QoS nghiêm ngặt:
 
-* Luồng âm thanh thô (Audio Stream Up/Down).
-
-* Bản tin trạng thái thiết bị ngoại vi (Device Shadow).
-
-* Dữ liệu đồng bộ lịch trình và lệnh điều khiển hệ thống.
+* **Luồng âm thanh thô (Audio Stream Up/Down):** Chạy ở **QoS 0** để ưu tiên băng thông, độ trễ thấp nhất, chấp nhận rơi rớt gói tin.
+* **Bản tin điều khiển & Đồng bộ lịch (Cmd_Sync):** Chạy ở **QoS 2** (Exactly once) để đảm bảo không lặp, không sót lệnh can thiệp bộ nhớ.
+* **Bản tin trạng thái thiết bị ngoại vi & Event (Shadow/Telemetry/Ack):** Chạy ở **QoS 1** (At least once) kết hợp `Clean Session = False` để tự động đẩy bù gói tin khi thiết bị tái kết nối.
 
 ### Đánh giá băng thông Audio MQTT
 
@@ -292,106 +279,7 @@ Lưu trữ dữ liệu vĩnh viễn (*Persistent Storage*).
 ### Production
 
 * PostgreSQL
-
-### ER diagram
-
-```mermaid
-erDiagram
-
-    DEVICE {
-        string mac_address PK
-        string name
-        string status
-        datetime last_seen
-    }
-
-    PERIPHERAL {
-        int id PK
-        string device_id FK
-        string peripheral_name
-        string state
-        boolean is_mutable
-        datetime updated_at
-    }
-
-    SCHEDULE {
-        string id PK
-        string device_id FK
-        string parent_id FK
-        string title
-        datetime start_time
-        datetime end_time
-        string timezone
-        string recurrence_rule
-        string exdate
-        string rdate
-        datetime recurrence_id
-        string status
-        string source
-        datetime created_at
-    }
-
-    TELEMETRY_LOG {
-        int id PK
-        string device_id FK
-        int free_heap_kb
-        int rssi
-        int uptime_seconds
-        int last_audio_heard_ms
-        float audio_peak_db
-        datetime timestamp
-    }
-
-    DEVICE ||--o{ PERIPHERAL : manages
-    DEVICE ||--o{ SCHEDULE : schedules
-    DEVICE ||--o{ TELEMETRY_LOG : telemetry
-    SCHEDULE ||--o| SCHEDULE : overrides
-```
 ---
-## 4.1. Devices Table
-
-Quản lý:
-
-* MAC Address
-* Device name
-* Online/Offline state
-
----
-
-## 4.2. Peripherals Table
-
-Lưu trạng thái:
-
-* Mic
-* Speaker
-* LED
-* Peripheral modules
-
----
-
-## 4.3. Schedules Table
-
-Lưu:
-
-* Khung thời gian biểu chuẩn: Lưu chuỗi sự kiện định kỳ (RRULE) kèm múi giờ (timezone) để xử lý chính xác sai lệch giờ.
-* Quản lý ngoại lệ (Exceptions): 
-  * Lưu trữ các sự kiện bị hủy (exdate)
-  * Sự kiện thêm mới (rdate)
-  * Các lịch bị thay đổi/snooze (qua cơ chế tự tham chiếu parent_id và recurrence_id).
-* Dữ liệu đã merge từ:
-
-  * Crawler
-  * Voice command
-
----
-
-## 4.4. telemetry_logs Table
-
-Bảng dạng Time-series lưu trữ:
-* lịch sử các thông số hệ thống của ESP32 gửi lên (Free RAM, RSSI, Uptime)
-* dữ liệu giám sát micro (last_audio_heard_ms, audio_peak_db) 
-
-phục vụ việc vẽ biểu đồ theo dõi sức khỏe thiết bị trên Web Dashboard.
 
 
 # 5. Lớp Frontend (Web Dashboard)
@@ -420,11 +308,8 @@ Mục đích:
 Frontend giao tiếp với FastAPI thông qua REST API.
 
 ### Chức năng
-
-* Hiển thị lịch
-* Thêm lịch
-* Sửa lịch
-* Xóa lịch
+* Hiển thị, Thêm, Sửa, Xóa lịch học.
+* **Đồng bộ thời gian thực (Interrupt Trigger):** Bất kỳ hành động thay đổi lịch nào từ Web UI đều sẽ lập tức trigger Backend đẩy bản tin lệnh `Cmd_Sync` [QoS 2] ép xuống ESP32. Nếu thiết bị đang bận (thu/phát âm thanh), tín hiệu này sẽ sinh ngắt (Interrupt) để ưu tiên ghi Flash file lịch mới ngay lập tức, giải quyết triệt để vấn đề Race Condition.
 
 Có thể tích hợp:
 
@@ -451,11 +336,11 @@ ESP32 lưu vào LittleFS
     ↓
 Người dùng nói "Snooze"
     ↓
-ESP32 cập nhật lịch cục bộ
+ESP32 ghi Flash cập nhật lịch cục bộ (Write-Ahead Logging)
     ↓
-ESP32 gửi action report lên Server
+ESP32 publish bản tin Event_Update [QoS 1] lên Server
     ↓
-Server cập nhật Database
+Server cập nhật Database (Background task)
 ```
 
 ---
@@ -546,31 +431,6 @@ IoT-project/                     # Thư mục gốc dự án
                 └── mqtt_ws.js   # Đổ dữ liệu realtime từ cổng 9001 lên màn hình giám sát
 ```
 
----
-
-# 8. Sơ đồ tuần tự xử lý Giọng nói
-```text
-  Người Dùng               ESP32 Edge              Mosquitto              FastAPI Server
-     │                         │                         │                         │
-     │── (Nói: "Hey System") ─>│                         │                         │
-     │                         │── (Bật Mic, thu âm) ───>│                         │
-     │                         │                         │                         │
-     │── "Thêm lịch tập Gym" ─>│                         │                         │
-     │                         │──── [audio/up (QoS 0)]->│                         │
-     │                         │     (Stream âm thanh)   │──── [audio/up (QoS 0)]->│
-     │                         │                         │                         │── [Tầng STT]: Chuyển Audio -> Text
-     │                         │                         │                         │── [LLM Agent]: Phân tích thực thể
-     │                         │                         │                         │── [Pydantic]: Ép kiểu & Validate JSON
-     │                         │                         │                         │── [Database]: Ghi nhận lịch trình mới
-     │                         │                         │                         │
-     │                         │                         │<─── [schedule/sync] ────│ (Đồng bộ bản tin nén 48h mới)
-     │                         │<─── [schedule/sync] ────│                         │ (Đính kèm Message Expiry Interval)
-     │                         │ (Ghi file LittleFS)     │                         │
-     │                         │                         │                         │
-     │<── [Phát loa TTS] ──────│                         │                         │
-     │   "Đã thêm lịch tập"    │                         │                         │
-```
-
 # 9. Kế hoạch Phát triển mở rộng - Phase 2 (Optional)
 Các hạng mục bảo mật và quản lý nâng cao sẽ được cô lập và triển khai ở giai đoạn cuối cùng khi toàn bộ hệ thống lõi đã hoạt động ổn định:
 
@@ -639,276 +499,4 @@ flowchart TD
     ESP32 --- Hardware
     ESP32 --- EdgeAI
 ```
-
-
-
-# 11. Quy hoạch MQTT Topic
-
-## Root Namespace
-
-```text
-iot_schedule/{device_id}/
-```
-
-Ví dụ:
-
-```text
-iot_schedule/A1B2C3D4E5F6/
-```
-
----
-
-# 11.1. Connection & LWT
-
-## Topic
-
-```text
-iot_schedule/{device_id}/status
-```
-
-## Thông tin
-
-| Thuộc tính | Giá trị        |
-| ---------- | -------------- |
-| Direction  | ESP32 → Server |
-| QoS        | 1              |
-| Retain     | True           |
-
-## Cơ chế hoạt động
-
-* ESP32 kết nối thành công → publish `online`
-* Nếu mất điện/mất mạng → Broker tự publish `offline`
-
-## Payload mẫu
-
-```json
-"online"
-```
-
----
-
-# 11.2. Device Shadow
-
-## Report Topic
-
-```text
-iot_schedule/{device_id}/shadow/report
-```
-
-| Thuộc tính | Giá trị        |
-| ---------- | -------------- |
-| Direction  | ESP32 → Server |
-| QoS        | 1              |
-| Retain     | True           |
-
-## Payload mẫu
-
-```json
-{
-  "mic": "ok",
-  "speaker": "idle",
-  "led_indicator": "on"
-}
-```
-
----
-
-## Set Topic
-
-```text
-iot_schedule/{device_id}/shadow/set
-```
-
-| Thuộc tính | Giá trị        |
-| ---------- | -------------- |
-| Direction  | Server → ESP32 |
-| QoS        | 1              |
-| Retain     | False          |
-
-## Payload mẫu
-
-```json
-{
-  "led_indicator": "off"
-}
-```
-
----
-# 11.3. Telemetry
-## Report Topic
-
-```text
-iot_schedule/{device_id}/telemetry/report
-```
-| Thuộc tính | Giá trị        |
-| ---------- | -------------- |
-| Direction  | ESP32 → Server |
-| QoS        | 0 hoặc 1       |
-| Retain     | False          |
-
-## Payload mẫu
-```json
-{
-  "free_heap_kb": 45,
-  "rssi": -58,
-  "uptime_seconds": 86400,
-  "last_audio_heard_ms": 1200,
-  "audio_peak_db": -11.5
-}
-```
-# 11.4. Audio Streaming
-
-## Audio Up Topic
-
-```text
-iot_schedule/{device_id}/audio/up
-```
-
-* ESP32 gửi audio stream lên Server
-* Server chạy STT
-
----
-
-## Audio Down Topic
-
-```text
-iot_schedule/{device_id}/audio/down
-```
-
-* Server gửi TTS audio stream xuống ESP32
-
----
-
-## MQTT Configuration
-
-| Thuộc tính | Giá trị |
-| ---------- | ------- |
-| QoS        | 0       |
-| Retain     | False   |
-
-### Lý do dùng QoS 0
-
-* Audio stream là dữ liệu liên tục
-* Mất một chunk nhỏ không nghiêm trọng
-* QoS 1 sẽ gây ACK delay
-* Làm tăng latency toàn bộ stream
-
----
-
-# 11.5. Schedule Sync
-
-## Topic
-
-```text
-iot_schedule/{device_id}/schedule/sync
-```
-
-| Thuộc tính | Giá trị        |
-| ---------- | -------------- |
-| Direction  | Server → ESP32 |
-| QoS        | 1              |
-| Retain     | True           |
-
-## Chức năng
-
-* Đồng bộ lịch 48h tới
-* Hỗ trợ hoạt động offline
-* Lưu dữ liệu vào LittleFS
-
-## Payload mẫu
-
-```json
-{
-  "sync_time": "2026-05-20T23:00:00",
-  "events": [
-    {
-      "id": "ev_101",
-      "time": "2026-05-21T07:00:00",
-      "type": "alarm",
-      "tone": "morning.mp3"
-    }
-  ]
-}
-```
-
----
-
-# 11.5. Edge Actions
-
-## Topic
-
-```text
-iot_schedule/{device_id}/action/report
-```
-
-| Thuộc tính | Giá trị        |
-| ---------- | -------------- |
-| Direction  | ESP32 → Server |
-| QoS        | 1              |
-| Retain     | False          |
-
-## Chức năng
-
-ESP32 gửi các sự kiện offline lên Server:
-
-* Snooze
-* Stop
-* Physical button actions
-
-## Payload mẫu
-
-```json
-{
-  "event_id": "ev_101",
-  "action": "snooze",
-  "delay_min": 10,
-  "timestamp": "2026-05-21T07:00:05"
-}
-```
-
----
-
-# 12. Gợi ý cải thiện Kiến trúc
-
-## Nên bổ sung
-
-### Redis
-
-Dùng cho:
-
-* Cache realtime
-* Queue
-* Pub/Sub nội bộ
-
----
-
-### Authentication
-
-Frontend nên có:
-
-* JWT Authentication
-* Role-based Access Control
-
----
-
-### OTA Update
-
-ESP32 nên hỗ trợ:
-
-* Firmware OTA
-* Rollback firmware
-* Version management
-
----
-
-### Logging & Monitoring
-
-Có thể tích hợp:
-
-* Prometheus
-* Grafana
-* Loki
-* ELK Stack
-
----
 

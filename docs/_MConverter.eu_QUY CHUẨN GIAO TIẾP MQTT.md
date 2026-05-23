@@ -103,21 +103,3 @@ Khi ESP32 ở trong trạng thái mất kết nối WiFi nhưng người dùng v
 2.  Bắt buộc serialize dữ liệu đẩy vào hàng đợi nhị phân trong bộ nhớ Flash (LittleFS) (tham khảo file local_storage.cpp).
 
 3.  Khi có mạng trở lại, phải gửi bù (sync) với cờ **QoS 1**. Chỉ được xóa file nhị phân khỏi LittleFS khi Broker trả về gói tin PUBACK.
-
-## 7. Developer Checklist (Dành cho người Code & Review) {#developer-checklist-dành-cho-người-code-review}
-
-Bất kỳ tính năng nào liên quan đến MQTT khi tạo Pull Request đều phải tick ✅ đủ các mục này:
-
-- \[ \] Cấu trúc Topic đã tuân thủ device/\<device_id\>/\... chưa?
-
-- \[ \] Topic có bị hardcode trong code không? (Yêu cầu dùng snprintf động chèn \<device_id\>).
-
-- \[ \] Payload JSON đã được test tính hợp lệ (Valid JSON) chưa?
-
-- \[ \] Thời gian đã dùng UNIX Timestamp chưa? (Không dùng String Datetime).
-
-- \[ \] Thiết lập đúng QoS (0 cho Telemetry, 1 cho Lệnh/Sự kiện)?
-
-- \[ \] Có nhớ đặt Retain = False cho các Lệnh (Commands) chưa? (Để tránh ESP reset tự động nhận lại lệnh cũ).
-
-- \[ \] Trên ESP32: Hàm Publish có gây blocking/treo vi điều khiển khi mất mạng không? (Test bằng cách tắt cục phát WiFi).
