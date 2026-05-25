@@ -9,7 +9,7 @@ static const char *TAG = "TIME_CORE";
 
 /* =========================================================================
  * KHỞI TẠO ĐỒNG BỘ THỜI GIAN QUA SNTP
- * 
+ *
  * Theo MQTT Convention: Toàn bộ timestamp phải là UNIX Timestamp (số nguyên)
  * Hàm này sẽ đồng bộ thời gian từ server NTP để hệ thống luôn có thời gian chính xác.
  * ========================================================================= */
