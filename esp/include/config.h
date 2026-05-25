@@ -4,14 +4,15 @@
 /* =========================================================================
  * THÔNG SỐ MẠNG (WIFI)
  * ========================================================================= */
-#define WIFI_SSID               "TP-Link_BA00"
-#define WIFI_PASSWORD           "98755370"
+#define WIFI_SSID               "DangDat"
+#define WIFI_PASSWORD           "15042005"
 #define WIFI_MAX_RETRY          5       // Số lần thử kết nối lại trước khi reset module
 
 /* =========================================================================
  * THÔNG SỐ MQTT BROKER
  * ========================================================================= */
-#define MQTT_BROKER_URI         "mqtt://192.168.0.102:1883" // IP của Server nội bộ
+//#define MQTT_BROKER_URI         "mqtt://192.168.0.102:1883" // IP của Server nội bộ
+#define MQTT_BROKER_URI         "mqtt://192.168.1.2:1883" // IP của Server nội bộ
 // #define MQTT_USERNAME        "admin"                    
 // #define MQTT_PASSWORD        "secret"
 #define MQTT_KEEPALIVE_SEC      60                          // Chu kỳ gửi Pingreq
@@ -22,14 +23,17 @@
 // --- Ngoại vi cơ bản ---
 #define PIN_BTN_WAKE            0       // Nút bấm vật lý (Boot button)
 
-// --- I2S Audio (Mic & Speaker) ---
-#define I2S_MIC_WS              25      // L/R Clock (Word Select)
-#define I2S_MIC_SCK             26      // Bit Clock (BCLK)
-#define I2S_MIC_SD              27      // Serial Data (DIN)
+// --- I2S Audio ---
+// I2S_NUM_0 — INMP441 Microphone (RX only)
+#define I2S_MIC_BCLK            12      // Bit Clock Mic
+#define I2S_MIC_WS              13      // Word Select Mic
+#define I2S_MIC_SD              14      // Data từ Mic
 
-#define I2S_SPK_WS              19
-#define I2S_SPK_SCK             21
-#define I2S_SPK_SD              22
+// I2S_NUM_1 — MAX98357A Speaker (TX only)
+// Cắm thêm 2 dây: GPIO17 → BCLK loa, GPIO18 → LRC loa
+#define I2S_SPK_BCLK            17      // Bit Clock Loa
+#define I2S_SPK_WS              18      // Word Select Loa
+#define I2S_SPK_SD              16      // Data vào Loa
 
 /* =========================================================================
  * CẤU HÌNH AUDIO & XỬ LÝ GIỌNG NÓI
@@ -37,6 +41,7 @@
 #define AUDIO_SAMPLE_RATE       16000   // 16kHz chuẩn cho nhận diện giọng nói (STT)
 #define AUDIO_CHANNELS          1       // Mono
 #define AUDIO_BITS_PER_SAMPLE   16      // 16-bit
+#define AUDIO_BUFFER_SIZE       1024     // ← THÊM DÒNG NÀY
 #define VAD_THRESHOLD_DB        -40.0f  // Ngưỡng decibel để kích hoạt Voice Activity Detection
 
 /* =========================================================================
