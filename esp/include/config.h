@@ -38,11 +38,14 @@
 /* =========================================================================
  * CẤU HÌNH AUDIO & XỬ LÝ GIỌNG NÓI
  * ========================================================================= */
+#define MAX_STEREO_SAMPLES 1024
 #define AUDIO_SAMPLE_RATE       16000   // 16kHz chuẩn cho nhận diện giọng nói (STT)
 #define AUDIO_CHANNELS          1       // Mono
 #define AUDIO_BITS_PER_SAMPLE   16      // 16-bit
 #define AUDIO_BUFFER_SIZE       1024     // ← THÊM DÒNG NÀY
 #define VAD_THRESHOLD_DB        -40.0f  // Ngưỡng decibel để kích hoạt Voice Activity Detection
+#define VAD_AMPLITUDE_THRESHOLD 5000
+
 
 /* =========================================================================
  * THỜI GIAN & ĐỒNG BỘ (NTP)

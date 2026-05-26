@@ -142,7 +142,6 @@ static void audio_stream_task(void *pvParameters) {
             audio_reset_watchdog();
 
             // VAD: chỉ publish khi có giọng nói thật
-            #define VAD_AMPLITUDE_THRESHOLD 5000
             if (avg > VAD_AMPLITUDE_THRESHOLD) {
                 char topic[80];
                 snprintf(topic, sizeof(topic), "iot_schedule/%s/audio/stream_up",
@@ -243,11 +242,13 @@ esp_err_t audio_playback(const uint8_t* data, size_t len) {
 
     const int16_t* mono = (const int16_t*)data;
     size_t mono_count   = len / 2;
-    size_t stereo_len   = mono_count * 2 * sizeof(int16_t);
-
-    int16_t* stereo = (int16_t*)malloc(stereo_len);
-    if (!stereo) {
-        ESP_LOGE(TAG, "Không đủ heap (%d bytes)", stereo_len);
+    
+    // Dùng bộ đệm tĩnh, tránh cấp phát quá nhiều vùng nhớ trên heap
+    // Cấp phát static 
+    // nhận tối đa MAX_STEREO_SAMPLES 1024 => 2048 byte mono => 4096 stero
+    static int16_t stereo[MAX_STEREO_SAMPLES * 2];
+    if (mono_count > MAX_STEREO_SAMPLES) {
+        ESP_LOGE(TAG, "Gói tin audio quá lớn so với buffer tĩnh (%d > %d)!", mono_count, MAX_STEREO_SAMPLES);
         return ESP_ERR_NO_MEM;
     }
 
@@ -260,12 +261,11 @@ esp_err_t audio_playback(const uint8_t* data, size_t len) {
     }
 
     size_t written = 0;
-    esp_err_t ret = i2s_channel_write(tx_handle, stereo, stereo_len,
+    esp_err_t ret = i2s_channel_write(tx_handle, stereo, mono_count * 2 *sizeof(int16_t),
                                       &written, pdMS_TO_TICKS(500));
-    free(stereo);
 
     if (ret != ESP_OK) ESP_LOGE(TAG, "Write lỗi: 0x%x", ret);
-    else ESP_LOGD(TAG, "🔊 Phát %d/%d bytes", written, stereo_len);
+    else ESP_LOGD(TAG, "🔊 Phát %d/%d bytes", written, mono_count * 2 *sizeof(int16_t));
     return ret;
 }
 
