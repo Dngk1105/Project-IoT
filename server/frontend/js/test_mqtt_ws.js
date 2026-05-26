@@ -1,6 +1,61 @@
 let client = null;
 const logWindow = document.getElementById('log-window');
 
+// ==========================================
+// HỆ THỐNG ÂM THANH (WEB AUDIO API)
+// ==========================================
+let audioCtx = null;
+let nextPlayTime = 0;
+
+// Khởi tạo Card âm thanh ảo (Yêu cầu click từ người dùng)
+document.getElementById('btnInitAudio').addEventListener('click', () => {
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+    }
+    if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+    }
+    document.getElementById('btnInitAudio').innerText = '✅ Loa đã mở! Sẵn sàng rống!';
+    document.getElementById('btnInitAudio').style.background = '#4CAF50';
+});
+
+function playRawPCM(messageBuffer) {
+    if (!audioCtx || audioCtx.state !== 'running') return; 
+
+    // [FIX LỖI MEMORY ALIGNMENT] 
+    // Tạo một bản sao độc lập để reset byteOffset về 0
+    const safeBuffer = new Uint8Array(messageBuffer).buffer;
+    
+    // 1. Ép mảng byte thành mảng số nguyên 16-bit an toàn
+    const int16Array = new Int16Array(safeBuffer);
+    
+    // 2. Chuyển sang mảng số thực Float32 (Chuẩn Web Audio)
+    const float32Array = new Float32Array(int16Array.length);
+    for (let i = 0; i < int16Array.length; i++) {
+        float32Array[i] = int16Array[i] / 32768.0; 
+    }
+
+    // ... (Giữ nguyên các đoạn code khởi tạo AudioBuffer bên dưới)
+    const audioBuffer = audioCtx.createBuffer(1, float32Array.length, 16000);
+    audioBuffer.getChannelData(0).set(float32Array);
+
+    const source = audioCtx.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(audioCtx.destination);
+
+    const currentTime = audioCtx.currentTime;
+    if (nextPlayTime < currentTime) {
+        nextPlayTime = currentTime + 0.05; 
+    }
+
+    source.start(nextPlayTime);
+    nextPlayTime += audioBuffer.duration;
+}
+
+// ==========================================
+// HỆ THỐNG GIAO DIỆN & MQTT
+// ==========================================
+
 // Hàm in log ra màn hình Terminal giả lập
 function appendLog(direction, topic, payload) {
     const time = new Date().toLocaleTimeString();
@@ -46,7 +101,13 @@ document.getElementById('btnConnect').addEventListener('click', () => {
 
     // Sự kiện hứng gói tin (Rất quan trọng)
     client.on('message', (topic, message) => {
-        appendLog('IN', topic, message.toString());
+        if (topic.includes('audio')){
+            appendLog('IN', topic, `[Nhận dữ liệu âm thanh: ${message.byteLength} bytes]`);
+            playRawPCM(message);
+        }
+        else {
+            appendLog('IN', topic, message.toString());
+        }
     });
 
     client.on('error', (err) => {
