@@ -53,8 +53,7 @@ void mqtt_task_runner(void *pvParameters) {
  * Thứ tự khởi động:
  *   1. Chờ MQTT_READY_BIT từ Core 0
  *   2. Init time + audio
- *   3. Loopback test (~3 giây) để xác nhận Mic + Loa hoạt động
- *   4. Bắt đầu stream thật lên Server
+ *   3. Bắt đầu stream thật lên Server
  * ========================================================================= */
 void app_logic_task(void *pvParameters) {
     wifi_wait_for_connection();
@@ -74,12 +73,6 @@ void app_logic_task(void *pvParameters) {
         vTaskDelete(NULL);
         return;
     }
-
-    // [FIX] Loopback test trước để xác nhận Mic + Loa OK
-    // Nói vào mic trong ~3 giây, nếu nghe tiếng ra loa là hardware hoạt động đúng.
-    ESP_LOGI(TAG, "=== LOOPBACK TEST (~3 giây) — Nói vào mic để kiểm tra loa ===");
-    audio_test_loopback();
-    ESP_LOGI(TAG, "=== LOOPBACK TEST XONG — Bắt đầu stream thật lên Server ===");
 
     ESP_LOGI(TAG, "Device ID: %s", mqtt_get_device_id());
     audio_start_streaming(true);

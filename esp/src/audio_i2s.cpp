@@ -270,29 +270,6 @@ esp_err_t audio_playback(const uint8_t* data, size_t len) {
 }
 
 /* =========================================================================
- * TEST LOOPBACK (~3 GIÂY)
- * ========================================================================= */
-esp_err_t audio_test_loopback(void) {
-    ESP_LOGI(TAG, "🔁 Loopback Test bắt đầu...");
-    static int32_t raw[AUDIO_BUFFER_SIZE / 4];
-    static int16_t pcm[AUDIO_BUFFER_SIZE / 4];
-    size_t bytes_read = 0;
-
-    for (int i = 0; i < 300; i++) {
-        if (i2s_channel_read(rx_handle, raw, sizeof(raw),
-                             &bytes_read, pdMS_TO_TICKS(100)) == ESP_OK && bytes_read > 0) {
-            size_t n = bytes_read / 4;
-            for (size_t j = 0; j < n; j++) {
-                pcm[j] = (int16_t)(raw[j] >> 14);
-            }
-            audio_playback((const uint8_t*)pcm, n * 2);
-        }
-    }
-    ESP_LOGI(TAG, "✅ Loopback Test hoàn tất.");
-    return ESP_OK;
-}
-
-/* =========================================================================
  * DỌN DẸP
  * ========================================================================= */
 void audio_i2s_deinit(void) {
