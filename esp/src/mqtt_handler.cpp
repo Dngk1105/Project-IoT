@@ -235,6 +235,12 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
                     // Trang thai ket noi toi server
                     last_server_pong_time = get_current_unix_timestamp();
                     ESP_LOGD(TAG, "Nhận PONG từ Server lúc %lu", last_server_pong_time);
+                    if (!time_core_is_synced()){
+                        //Xin dong bo time voi server
+                        char time_request_topic[80];
+                        snprintf(time_request_topic, sizeof(time_request_topic), "iot_schedule/%s/events/time_request", device_id);
+                        mqtt_handler_publish(time_request_topic, "{\"action\":\"get_time\"}", 0, 1, 0); // qos 1, khong retain
+                    }
                     break;
 
                 case MSG_TYPE_SYNC_SCHEDULE:
