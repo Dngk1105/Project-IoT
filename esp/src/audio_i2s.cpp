@@ -14,7 +14,7 @@
 
 static const char *TAG = "AUDIO_I2S";
 
-static bool is_streaming = false;
+static volatile bool is_streaming = false;
 static TaskHandle_t audio_stream_task_handle = NULL;
 static TaskHandle_t audio_playback_task_handle = NULL;
 
@@ -25,7 +25,7 @@ static void audio_playback_task(void *pvParameters);
  * MQTT day payload vao Ring
  * Audio Task lay payload tu Ring, Chi lay khi RingBuffer du du lieu
 */
-static bool is_playback_finished = true;
+static volatile bool is_playback_finished = true;
 static RingbufHandle_t audio_ringbuf = NULL;
 
 static i2s_chan_handle_t rx_handle = NULL;  // I2S_NUM_0 — INMP441

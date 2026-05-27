@@ -42,6 +42,7 @@ void mqtt_task_runner(void *pvParameters) {
     while (1){
         if (mqtt_is_connected()) {
             set_sys_state(SYS_MQTT_OK);
+            audio_start_streaming(false);
         } else {
             if (get_sys_state() == SYS_MQTT_OK) // Rot ket noi, quay tro ve trang thai cu
                 set_sys_state(SYS_WIFI_OK);

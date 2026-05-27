@@ -30,7 +30,8 @@ typedef enum {
     MSG_TYPE_SYNC_SCHEDULE,
     MSG_TYPE_SHADOW,
     MSG_TYPE_EVENTS,
-    MSG_TYPE_PONG
+    MSG_TYPE_PONG,
+    MSG_TYPE_TIME_SYNC
 } mqtt_msg_type_t;
 static mqtt_msg_type_t current_msg_type = MSG_TYPE_UNKNOWN;
 static char current_topic[128] = {0}; // Lưu lại topic của chunk đầu tiên
@@ -82,6 +83,12 @@ static void parse_json_envelope(const char *payload, mqtt_msg_type_t msg_type){
             ESP_LOGI(TAG, "Device shadow. Cap nhat ngoai vi");
             // TODO: device_shadow_update(data);
         }
+        else if (msg_type == MSG_TYPE_TIME_SYNC){
+            cJSON *ts_item = cJSON_GetObjectItem(data, "timestamp");
+            if (cJSON_IsNumber(ts_item)){
+                time_core_set_time((uint32_t)ts_item->valuedouble);
+            }
+        }
         //.....
     }
 
@@ -108,14 +115,18 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
             snprintf(cmd_topic,       sizeof(cmd_topic),       "iot_schedule/%s/commands/#", device_id);
             snprintf(audio_down_topic,sizeof(audio_down_topic),"iot_schedule/%s/audio/stream_down", device_id);
             snprintf(shadow_topic,    sizeof(shadow_topic),    "iot_schedule/%s/shadow/#", device_id);
-            snprintf(pong_topic,    sizeof(pong_topic),    "iot_schedule/%s/telemetry/pong/#", device_id);
+            snprintf(pong_topic,    sizeof(pong_topic),    "iot_schedule/%s/telemetry/pong", device_id);
 
 
             mqtt_handler_subscribe(cmd_topic, 2);
             mqtt_handler_subscribe(audio_down_topic, 0);   // Audio stream ưu tiên tốc độ (QoS 0)
             mqtt_handler_subscribe(shadow_topic, 1);
-            mqtt_handler_subscribe(events_topic, 1);
             mqtt_handler_subscribe(pong_topic, 0);
+
+            //Xin dong bo time voi server
+            char time_request_topic[80];
+            snprintf(time_request_topic, sizeof(time_request_topic), "iot_schedule/%s/events/time_request", device_id);
+            mqtt_handler_publish(time_request_topic, "{\"action\":\"get_time\"}", 0, 1, 0); // qos 1, khong retain
 
             ESP_LOGI(TAG, "Đã subscribe đầy đủ các topic chính");
 
@@ -193,7 +204,13 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
 
                 else if (strstr(current_topic, "/telemetry/pong") != NULL) {
                     current_msg_type = MSG_TYPE_PONG;
-                    ESP_LOGI(TAG, "[EVENT] Nhận event từ Server");
+                    ESP_LOGI(TAG, "[PingPong] Nhận Pong từ Server");
+                }
+
+                // Co lenh dong bo tu server
+                else if (strstr(current_topic, "/commands/time_sync") != NULL){
+                    current_msg_type = MSG_TYPE_TIME_SYNC;
+                    ESP_LOGI(TAG, "[TIME_SYNC] Nhận time_sync từ Server");
                 }
                 
                 else {
@@ -218,6 +235,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
 
                 case MSG_TYPE_SYNC_SCHEDULE:
                 case MSG_TYPE_SHADOW:
+                case MSG_TYPE_TIME_SYNC:
                     // Cac goi tin JSON. Gia su goi < MQTT_BUFFER_IN_SIZE (Khong bam)
                     // Neu gui goi tin lon thi can noi vao 
                     if (event->current_data_offset == 0 && event->data_len == event->total_data_len){
