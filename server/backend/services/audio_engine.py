@@ -17,7 +17,12 @@ class AudioEngineService:
             if action == "stream_up":
                 data_length = len(raw_pcm_data)
                 
-                # logic
+                # CHỖ NÀY SẼ GẮN AI ORCHESTRATOR SAU
+                # Tích lũy buffer
+                # Đẩy qua STT (Speech to Text)
+                # Kéo Prompt -> Đẩy qua LLM (Gemini)
+                # LLM Text -> Đẩy qua TTS (Text to Speech)
+                # Dùng publish_cb ném file TTS trả lại xuống ESP32
                 
                 logger.debug(f"[{device_id}] Nhận luồng âm thanh: {data_length} bytes")
                 

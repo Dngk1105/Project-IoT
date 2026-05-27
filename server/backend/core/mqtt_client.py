@@ -4,8 +4,11 @@ from typing import Any, Dict, Callable
 import json
 import logging
 
+#Services xu li tiopic gui tu esp
 from services.device_manager import device_manager_service
+from services.event_processor import event_processor_service
 from services.audio_engine import audio_engine_service
+from services.ack_manager import ack_manager_service
 
 logger = logging.getLogger(__name__) #ghi log
 
@@ -22,10 +25,21 @@ fast_mqtt = FastMQTT(config=mqtt_config)
 
 """Anh xa cac category theo dung services xu li cua no"""
 MQTT_SERVICE_ROUTER: Dict[str, Callable] = {
+    
+    #Service do DeviceMangager quan li
     "status": device_manager_service.process_lifecycle_status,
     "telemetry": device_manager_service.process_hardware_telemetry,
     "shadow": device_manager_service.process_device_shadow,
-    "audio": audio_engine_service.handle_stream
+    
+    #EnventProcessor
+    "events": event_processor_service.process_event,
+    
+    #AudioEngine
+    "audio": audio_engine_service.handle_stream,
+    
+    #AcKManager
+    "ack": ack_manager_service.process_ack
+    
     # Muon them thi them o day
 }
 
@@ -69,8 +83,12 @@ async def on_message(client: MQTTClient, topic: str, payload: bytes, qos: int, p
     if not device_id:
         return
     
+    # Khong echo lai topic minh pub
+    if category == "commands" or action == "stream_down":
+        return
+    
     target_service = MQTT_SERVICE_ROUTER.get(category)
-    if target_service:
+    if not target_service:
         logger.warning(f"Category khong co trong danh muc co the xu li: {category}")
         return
 
@@ -81,10 +99,10 @@ async def on_message(client: MQTTClient, topic: str, payload: bytes, qos: int, p
             await target_service(device_id, action, payload)
         else:
             #parse json cho payload 
-            msg_str = payload.decode(str = "utf-8")
+            msg_str = payload.decode("utf-8")
             json_data = json.loads(msg_str)
             # Service xu li json sau
-            await target_service(device_id, action, json_data)
+            await target_service(device_id, action, json_data, publish_message) #truyen publish() de khong can parse lai file nay
     except UnicodeDecodeError:
         logger.error(f"[{device_id}] Gói tin tại {topic} không phải định dạng UTF-8 hợp lệ!")
     except json.JSONDecodeError:
