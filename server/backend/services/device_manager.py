@@ -1,5 +1,7 @@
 import logging 
 from typing import Dict, Any, Callable
+from core.mqtt_protocol import MqttTopics, PayloadBuilder
+
 
 logger = logging.getLogger(__name__) #Ghi log
 
@@ -27,9 +29,11 @@ class DeviceManagerService:
     """Dinh ki xu li cac chi so cua he thong phan cung (RAM, Wifi,...)"""
     async def process_hardware_telemetry(self, device_id: str, action: str, payload: dict, publish_cb: Callable):
         if action == "ping":    #Neu ping -> pong lai
-            pong_topic = f"iot_schedule/{device_id}/telemetry/pong"
             
-            publish_cb(pong_topic, {"status": "alive"}, qos = 0)
+            pong_topic = MqttTopics.telemetry_pong(device_id)
+            data = {{"status": "alive"}}
+            payload = PayloadBuilder.build_json(data)
+            publish_cb(pong_topic, payload, qos = 0)
             logger.debug(f"Đã trả lời PONG cho [{device_id}]")
             return
         if action == "metrics":            

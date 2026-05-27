@@ -1,6 +1,7 @@
 import logging
 import time
 from typing import Callable
+from core.mqtt_protocol import MqttTopics, PayloadBuilder
 
 logger = logging.getLogger(__name__)
 
@@ -13,16 +14,12 @@ class EventProcessorService:
         if action == "time_request":
             current_unix_time = int(time.time())
             
-            #Dong goi theo chuan
-            response_payload = {
-                "v": "1.0",
-                "data": {
-                    "timestamp": current_unix_time
-                }
+            data = {
+                "timestamp": current_unix_time
             }
-            
-            cmd_topic = f"iot_schedule/{device_id}/commands/time_sync"
-            publish_cb(cmd_topic, response_payload, qos=1)
+            standard_payload = PayloadBuilder.build_json(data)
+            target_topic = MqttTopics.command(device_id, "time_sync")
+            publish_cb(target_topic, standard_payload, qos=1)
             logger.info(f"Đã cấp giờ chuẩn ({current_unix_time}) cho [{device_id}]")
             
         elif action == "button_press":
