@@ -19,6 +19,8 @@ void wifi_init_sta(void);
  */
 void wifi_wait_for_connection(void);
 
+bool wifi_is_connected(void);
+
 #ifdef __cplusplus
 }
 #endif

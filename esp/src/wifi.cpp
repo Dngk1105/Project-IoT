@@ -148,3 +148,8 @@ void wifi_wait_for_connection(void) {
     // cho đến khi WIFI_CONNECTED_BIT được set bởi event_handler.
     xEventGroupWaitBits(wifi_event_group, WIFI_CONNECTED_BIT, pdFALSE, pdTRUE, portMAX_DELAY);
 }
+
+bool wifi_is_connected(void){
+    EventBits_t bits = xEventGroupGetBits(wifi_event_group);
+    return (bits & WIFI_CONNECTED_BIT);
+}

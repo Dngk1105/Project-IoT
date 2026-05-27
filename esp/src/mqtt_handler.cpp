@@ -5,6 +5,7 @@
 #include "system_state.h"
 #include "esp_log.h"
 #include "esp_mac.h"
+#include "wifi_core.h"
 #include <string.h>
 #include <stdio.h>
 #include "cJSON.h"
@@ -145,8 +146,11 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
             ESP_LOGW(TAG, "MQTT Disconnected from Broker!");
             is_connected = false;
 
-            if (get_sys_state() == SYS_MQTT_OK) 
+            if (wifi_is_connected()){
                 set_sys_state(SYS_WIFI_OK);
+            }else{
+                set_sys_state(SYS_OFFLINE);
+            } 
             break;
 
         case MQTT_EVENT_SUBSCRIBED:
