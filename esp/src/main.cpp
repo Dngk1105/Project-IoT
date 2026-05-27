@@ -7,105 +7,10 @@
 #include "time_core.h"
 #include "audio_i2s.h"
 #include "esp_log.h"
+#include "system_state.h"
+
 
 static const char *TAG = "MAIN_APP";
-
-/*
-* Chương trình cần các biến trạng thái để quản lí esp, nhận biết tác vụ đang 
-thực hiện yêu cầu gì và tình trạng kết nối
-* Gôm 2 loại trạng thái: 
-    + Trạng thái hệ thống: Tình trạng kết nối của thiết bị
-    + Trạng thái ứng dụng: Tác vụ ứng dụng đang thực hiện
-*/
-
-typedef enum{
-    SYS_INIT,   //Khởi động
-    SYS_OFFLINE, // Chạy local
-    SYS_WIFI_OK, // Có wifi nhưng chưa kết nối được broker
-    SYS_MQTT_OK, // Kết nối broker thành công 
-    // Không kiểm tra kết nối tới server (hỏng bản chất mqtt), tất cả các thiết bị nên chỉ nói chuyện thông qua broker thôi
-} sys_state_t;
-
-typedef enum{
-    STATE_IDLE, // Rảnh rỗi, chờ đến giờ báo thức hoặc chờ Wake Word
-    STATE_ALARMING, // Đang đổ chuông báo thức bằng file âm thanh Local
-    STATE_LISTENING, // Lắng nghe yêu cầu/phản hồi từ người dùng
-    STATE_STREAM_UP, // Đẩy luồng audio
-    STATE_WAIT_SERVER, // Đợi phản hồi từ server 
-    STATE_STREAM_DOWN, // Phát âm thanh từ server trả xuống 
-    STATE_SYNCING,
-} app_state_t;
-
-// Lưu trạng thái, dùng mutex để tránh đụng độ cho luồng
-static volatile sys_state_t current_sys_state = SYS_INIT;
-static volatile app_state_t current_app_state = STATE_IDLE;
-static SemaphoreHandle_t state_mutex;
-
-//Hàm quản lí trạng thái, Chi co mot luong duoc su dung
-void set_sys_state(sys_state_t new_state){
-    if (xSemaphoreTake(state_mutex, portMAX_DELAY)){
-        if (current_sys_state != new_state){
-            ESP_LOGI(TAG, "Cap nhat SYSTEM_STATE: %d -> %d", current_sys_state, new_state);
-            current_sys_state = new_state;
-            
-            // Neu mat ket noi mang ma dang stream -> fallback Offline (IDLE)
-            if (new_state == SYS_OFFLINE
-            && (current_app_state == STATE_STREAM_UP || current_app_state == STATE_WAIT_SERVER)){
-                ESP_LOGW(TAG, "Mat Ket NOi, tam dung stream am thanh va cho phan hoi tu server!!!");
-                current_app_state = STATE_IDLE;
-                audio_start_streaming(false);
-            }
-        }
-    }
-    xSemaphoreGive(state_mutex);
-}
-// Hàm yêu cầu chuyển đổi trạng thái tác vụ (Kiểm tra điều kiện trước khi chuyển)
-bool request_app_state(app_state_t new_state){
-    bool allowed = false;
-    if (xSemaphoreTake(state_mutex, portMAX_DELAY)){
-        
-        // Muon stream up/down, dong bo lich len server thi can ket noi mqtt
-        if ((new_state == STATE_STREAM_UP || new_state == STATE_SYNCING 
-            || new_state == STATE_STREAM_DOWN) && current_sys_state != SYS_MQTT_OK){
-                ESP_LOGE(TAG, "Chua co ket noi MQTT, khong chuyen sang trang thai %d", new_state);
-        } 
-        // Neu co lich dong bo lich tu Server gui xuong, uu tien dong bo lich
-        else if (new_state == STATE_SYNCING) {
-            ESP_LOGW(TAG, "Co yeu cau cap nhat lich (STATE_SYNCING), Tam dung cac tac vu khac");
-
-            // Dung stream
-            if (current_app_state == STATE_STREAM_UP) audio_start_streaming(false);
-            current_app_state = new_state;
-            allowed = true;
-        }
-
-        // Duoc chuyen doi trang thai
-        else {
-            ESP_LOGI(TAG, "APP STATE Chuyển đổi: %d -> %d", current_app_state, new_state);
-            current_app_state = new_state;
-            allowed = true;
-        }
-        xSemaphoreGive(state_mutex);
-    }
-    return allowed;
-}
-
-// Cac ham getter
-app_state_t get_app_state() {
-    app_state_t state;
-    xSemaphoreTake(state_mutex, portMAX_DELAY);
-    state = current_app_state;
-    xSemaphoreGive(state_mutex);
-    return state;
-}
-
-sys_state_t get_sys_state() {
-    sys_state_t state;
-    xSemaphoreTake(state_mutex, portMAX_DELAY);
-    state = current_sys_state;
-    xSemaphoreGive(state_mutex);
-    return state;
-}
 
 /*Doi sang dung bien trang thai de quan li ket noi */
 // // Event Group để đồng bộ giữa 2 core
@@ -257,9 +162,11 @@ void app_logic_task(void *pvParameters) {
 extern "C" void app_main() {
     ESP_LOGI(TAG, "=== IoT Schedule Edge Device — Khởi động ===");
 
-    // // Tạo Event Group đồng bộ trước khi tạo task
     // system_event_group = xEventGroupCreate();
-    state_mutex = xSemaphoreCreateMutex();
+    state_manager_init();
+    set_sys_state(SYS_INIT);
+    request_app_state(STATE_IDLE);
+
 
     wifi_init_sta();
 
