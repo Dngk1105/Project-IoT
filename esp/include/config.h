@@ -48,6 +48,9 @@
 #define VAD_THRESHOLD_DB        -40.0f  // Ngưỡng decibel để kích hoạt Voice Activity Detection
 #define VAD_AMPLITUDE_THRESHOLD 200
 
+#define RINGBUF_SIZE 16384 // 16KB
+#define PREBUFFER_BYTES 4096 // Tích đủ 4KB mới bắt đầu phát để chống lag mạng
+
 
 /* =========================================================================
  * THỜI GIAN & ĐỒNG BỘ (NTP)

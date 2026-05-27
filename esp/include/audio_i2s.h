@@ -38,34 +38,15 @@ bool audio_is_streaming(void);
 
 
 /* =========================================================================
- * VOICE WATCHDOG
+ * BỘ ĐỆM RINGBUFFER CHỐNG JITTER (MẠNG LAG)
  * ========================================================================= */
 
-/**
- * Reset Voice Watchdog Timer (5 giây)
- * Hàm này nên được gọi khi nhận được phản hồi TTS từ Server
- */
-void audio_reset_watchdog(void);
+// Đẩy dữ liệu âm thanh nhị phân thô nhận từ MQTT vào RingBuffer (Non-blocking)
+void audio_ringbuf_feed(const uint8_t *data, size_t len);
 
+// Báo hiệu đã nhận xong trọn vẹn toàn bộ các chunk file Audio từ Server
+void audio_ringbuf_finish(void);
 
-/* =========================================================================
- * PHÁT ÂM THANH
- * ========================================================================= */
-
-/**
- * Phát âm thanh qua Loa từ buffer dữ liệu
- * Dùng để phát TTS nhận từ Server hoặc file cảnh báo
- */
-esp_err_t audio_playback(const uint8_t* data, size_t len);
-
-/* =========================================================================
- * TEST LOOPBACK
- * ========================================================================= */
-/**
- * Test Loopback: Ghi âm từ Mic và phát lại ngay qua Loa
- * Dùng để kiểm tra cả Mic và Loa có hoạt động không
- */
-esp_err_t audio_test_loopback(void);
 
 /* =========================================================================
  * DỌN DẸP TÀI NGUYÊN

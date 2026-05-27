@@ -9,6 +9,8 @@ static volatile sys_state_t current_sys_state = SYS_INIT;
 static volatile app_state_t current_app_state = STATE_IDLE;
 static SemaphoreHandle_t state_mutex;
 
+static TimerHandle_t server_wait_watchdog = NULL; // Watchdog
+
 // Phục vụ debug
 const char* sys_state_to_str(sys_state_t state) {
     switch(state) {
@@ -33,11 +35,25 @@ const char* app_state_to_str(app_state_t state) {
     }
 }
 
+/* Callback neu Server Timeout 
+*/
+static void server_timeout_callback(TimerHandle_t xTimer) {
+    ESP_LOGE(TAG, "WATCHDOG TIMEOUT: Server phản hồi quá chậm hoặc không hiểu lệnh!");
+    
+    // Dua he thong vao trang thai ranh
+    // Dung tac vu dang doi lenh
+    force_app_state_idle();
+    
+    //TODO: Xu li neu server timeout
+}
+
 
 // Khoi tao mutex
 void state_manager_init(void){
     if (state_mutex == NULL){
         state_mutex = xSemaphoreCreateMutex();
+
+        server_wait_watchdog = xTimerCreate("ServerWD", pdMS_TO_TICKS(5000), pdFALSE, (void *)0, server_timeout_callback);
         ESP_LOGI(TAG, "State Manager đã khởi tạo thành công.");
     }
 }
@@ -99,6 +115,23 @@ bool request_app_state(app_state_t new_state){
         else {
             ESP_LOGI(TAG, "APP STATE Chuyển đổi: %s -> %s", 
                 app_state_to_str(current_app_state), app_state_to_str(new_state));
+            
+            // Xu li watchdog
+            if (new_state == STATE_WAIT_SERVER){
+                if (server_wait_watchdog){
+                    ESP_LOGI(TAG, "Kích hoạt Watchdog chờ Server (5 giây)...");
+                    xTimerStart(server_wait_watchdog, 0);
+                }
+            }
+            else {
+                // Chuyển sang BẤT KỲ trạng thái nào khác (IDLE, STREAM_DOWN, SYNCING...)
+                // Đều có nghĩa là phiên chờ đã kết thúc -> bo watchdog
+                if (server_wait_watchdog && xTimerIsTimerActive(server_wait_watchdog)){
+                    ESP_LOGI(TAG, "Tắt Watchdog (Đã có phản hồi hoặc bị hủy).");
+                    xTimerStop(server_wait_watchdog, 0);
+                }
+            }
+            
             current_app_state = new_state;
             allowed = true;
         }

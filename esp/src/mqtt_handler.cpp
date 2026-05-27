@@ -108,8 +108,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
             snprintf(cmd_topic,       sizeof(cmd_topic),       "iot_schedule/%s/commands/#", device_id);
             snprintf(audio_down_topic,sizeof(audio_down_topic),"iot_schedule/%s/audio/stream_down", device_id);
             snprintf(shadow_topic,    sizeof(shadow_topic),    "iot_schedule/%s/shadow/#", device_id);
-            snprintf(events_topic,    sizeof(events_topic),    "iot_schedule/%s/events/#", device_id);
-            snprintf(pong_topic,    sizeof(pong_topic),    "iot_schedule/%s/telemtry/pong/#", device_id);
+            snprintf(pong_topic,    sizeof(pong_topic),    "iot_schedule/%s/telemetry/pong/#", device_id);
 
 
             mqtt_handler_subscribe(cmd_topic, 2);
@@ -157,7 +156,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
             nếu so sánh strstr() vào event->topic chắc chắn sẽ trả về lỗi vì topic = null
             */
            /// Goi tin audio lon co the bi bam ra, can luong nhan data nay
-           static bool is_audio_stream = false;
+           //static bool is_audio_stream = false;
 
            // Manh dau tien
            if (event->current_data_offset == 0){
@@ -197,12 +196,6 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
                     ESP_LOGI(TAG, "[EVENT] Nhận event từ Server");
                 }
                 
-                // Event từ Server (snooze, stop, ...)
-                else if (strstr(event->topic, "/events/") != NULL) {
-                    current_msg_type = MSG_TYPE_EVENTS;
-                    ESP_LOGI(TAG, "[EVENT] Nhận event từ Server");
-                }
-                
                 else {
                     current_msg_type = MSG_TYPE_UNKNOWN;
                 }
@@ -212,8 +205,8 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
                 case MSG_TYPE_AUDIO_DOWN:
                     //Du lieu nhi phan tho, parse vao ring buffer
                     if (event->data_len > 0){
-                        // TODO: Gọi hàm nạp RingBuffer
-                        // audio_ringbuf_feed((const uint8_t*)event->data, event->data_len);
+                        audio_ringbuf_feed((const uint8_t*)event->data, event->data_len);
+                        ESP_LOGI(TAG, "Xa %d bytes vao Ringbuffer", event->data_len);
                     }
                     break;
                 
@@ -247,8 +240,8 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
             if (event->current_data_offset + event->data_len >= event->total_data_len){
                 if (current_msg_type == MSG_TYPE_AUDIO_DOWN){
                     ESP_LOGI(TAG, "Đã nhận trọn vẹn file Audio TTS.");
-                    // TODO: Báo cho Audio Task biết để xả nốt loa
-                    // audio_ringbuf_finish();
+                    // Báo cho Audio Task biết để xả nốt loa
+                    audio_ringbuf_finish();
                 }
                 current_msg_type = MSG_TYPE_UNKNOWN;
             }
