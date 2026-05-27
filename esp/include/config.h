@@ -15,7 +15,9 @@
 #define MQTT_BROKER_URI         "mqtt://192.168.0.100:1883" // IP của Server nội bộ
 // #define MQTT_USERNAME        "admin"                    
 // #define MQTT_PASSWORD        "secret"
-#define MQTT_KEEPALIVE_SEC      60                          // Chu kỳ gửi Pingreq
+#define MQTT_KEEPALIVE_SEC      10                          // Chu kỳ gửi Pingreq
+#define MQTT_BUFFER_IN_SIZE     8192
+#define MQTT_BUFFER_OUT_SIZE   4096
 
 /* =========================================================================
  * BẢN ĐỒ CHÂN KẾT NỐI (GPIO MAPPING)
