@@ -3,6 +3,8 @@ from gmqtt import Client as MQTTClient
 from typing import Any, Dict, Callable
 import json
 import logging
+import time
+
 
 #Services xu li tiopic gui tu esp
 from services.device_manager import device_manager_service
@@ -101,6 +103,15 @@ async def on_message(client: MQTTClient, topic: str, payload: bytes, qos: int, p
             #parse json cho payload 
             msg_str = payload.decode("utf-8")
             json_data = json.loads(msg_str)
+            
+            # Cam dam bao thoi gian chinh xac
+            client_ts = json_data.get("timestamp", 0)
+            if client_ts < 1700000000:  
+                # Nếu ESP32 chưa có giờ (gửi số 0) hoặc giờ bị trôi
+                # Sử dụng Timestamp của Server thay thế
+                json_data["timestamp"] = int(time.time())
+                logger.debug(f"Đã tự động trám Timestamp cho [{device_id}] vì thiết bị gửi giờ ảo: {client_ts}")
+            
             # Service xu li json sau
             await target_service(device_id, action, json_data, publish_message) #truyen publish() de khong can parse lai file nay
     except UnicodeDecodeError:

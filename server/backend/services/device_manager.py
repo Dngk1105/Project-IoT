@@ -1,6 +1,7 @@
 import logging 
 from typing import Dict, Any, Callable
 from core.mqtt_protocol import MqttTopics, PayloadBuilder
+import time
 
 
 logger = logging.getLogger(__name__) #Ghi log
@@ -15,14 +16,18 @@ class DeviceManagerService:
        timestamp = payload.get("timestamp")
        
        if status == "online":
-           self._active_devices[device_id] = {"status": "online", "last_seen": timestamp}
-           logger.info(f"Thiet bi {device_id} vua ket noi. {len(self._active_devices)} thiet bi dang ket noi")
+            self._active_devices[device_id] = {"status": "online", "last_seen": timestamp}
+            logger.info(f"Thiet bi {device_id} vua ket noi. {len(self._active_devices)} thiet bi dang ket noi")
+           
+            time_payload = PayloadBuilder.build_json({"timestamp": int(time.time())})
+            time_topic = MqttTopics.command(device_id, "time_sync")
+            publish_cb(time_topic, time_payload, qos=1)
         
        elif status == "offline":
-           if device_id in self._active_devices:
+            if device_id in self._active_devices:
                self._active_devices[device_id]["status"] = "offline"
-           reason = payload.get("reason", "unknown")
-           logger.warning(f"Thiết bị {device_id} vừa ngắt kết nối. Lý do: {reason}")
+            reason = payload.get("reason", "unknown")
+            logger.warning(f"Thiết bị {device_id} vừa ngắt kết nối. Lý do: {reason}")
         #TODO: Cap nhat som toi DB
     
     

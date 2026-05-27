@@ -8,6 +8,7 @@
 #include "audio_i2s.h"
 #include "esp_log.h"
 #include "system_state.h"
+#include "mqtt_protocol.h"
 
 
 static const char *TAG = "MAIN_APP";
@@ -67,22 +68,39 @@ void app_logic_task(void *pvParameters) {
     audio_i2s_init();
 
     ESP_LOGI(TAG, "Logic Task bắt đầu hoạt động...");
+    // Biến lưu thời điểm cuối cùng xin giờ
+    TickType_t last_time_request = 0;
 
     while (1){
         app_state_t current_state = get_app_state();
         sys_state_t net_state = get_sys_state();
 
+        if (net_state == SYS_MQTT_OK && !time_core_is_synced()) {
+            // Cứ sau 10 giây (10000ms) nếu vẫn chưa có giờ thì xin lại
+            if (xTaskGetTickCount() - last_time_request > pdMS_TO_TICKS(10000)) {
+                ESP_LOGW(TAG, "Vẫn chưa có giờ chuẩn! Gửi lại yêu cầu Time Sync...");
+                char time_req_topic[80];
+                mqtt_proto_get_time_req_topic(mqtt_get_device_id(), time_req_topic, sizeof(time_req_topic));
+                mqtt_handler_publish(time_req_topic, "{\"action\":\"get_time\"}", 0, 1, 0);
+                
+                last_time_request = xTaskGetTickCount(); // Reset bộ đếm
+            }
+        }
+
         switch (current_state){
             case STATE_IDLE:
-                // 1. Kiểm tra lịch báo thức offline (từ LittleFS)
-                // if (local_storage_check_alarm_time()) {
-                //      request_app_state(STATE_ALARMING);
-                // }
-                
-                // 2. Định kỳ bắn Telemetry (Chỉ cần có MQTT)
-                // if (net_state == SYS_MQTT_OK && time_to_send_telemetry) {
-                //      telemetry_send_metrics();
-                // }
+                if (time_core_is_synced()){
+                    // 1. Kiểm tra lịch báo thức offline (từ LittleFS)
+                    // if (local_storage_check_alarm_time()) {
+                    //      request_app_state(STATE_ALARMING);
+                    // }
+                    
+                    // 2. Định kỳ bắn Telemetry (Chỉ cần có MQTT)
+                    // if (net_state == SYS_MQTT_OK && time_to_send_telemetry) {
+                    //      telemetry_send_metrics();
+                    // }
+                }
+
                 break;
             case STATE_ALARMING:
                 // Phát file MP3 cảnh báo từ Flash

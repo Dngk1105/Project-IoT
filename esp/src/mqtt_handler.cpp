@@ -139,7 +139,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
             /* Publish Birth Message (Online)
             * Gui thong bao cho server biet thiet bi vua online
             */
-            cJSON* data = cJSON_CreateObject();
+            data = cJSON_CreateObject();
             cJSON_AddStringToObject(data, "status", "online");
             cJSON_AddNumberToObject(data, "timestamp", get_current_unix_timestamp());
 
