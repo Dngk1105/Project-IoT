@@ -2,12 +2,12 @@
 CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
 CONFIG_ESPTOOLPY_FLASHSIZE="16MB"
 
-# Bật PSRAM và cấu hình 8MB Octal Mode
+# Bat PSRAM va cau hinh 8MB Octal Mode
 CONFIG_SPIRAM=y
 CONFIG_SPIRAM_MODE_OCT=y
 CONFIG_SPIRAM_SPEED_80M=y
 
-# Tùy chọn: Sử dụng PSRAM cho luồng lệnh và dữ liệu Read-Only để tiết kiệm SRAM nội
+# Su dung PSRAM cho luong lenh va du lieu Read-Only de tiet kiem SRAM noi
 CONFIG_SPIRAM_FETCH_INSTRUCTIONS=y
 CONFIG_SPIRAM_RODATA=y
 
