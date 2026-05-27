@@ -1,8 +1,11 @@
 from fastapi_mqtt import FastMQTT, MQTTConfig
 from gmqtt import Client as MQTTClient
-from typing import Any
+from typing import Any, Dict, Callable
 import json
 import logging
+
+from services.device_manager import device_manager_service
+from services.audio_engine import audio_engine_service
 
 logger = logging.getLogger(__name__) #ghi log
 
@@ -16,6 +19,22 @@ mqtt_config = MQTTConfig(
 )
 
 fast_mqtt = FastMQTT(config=mqtt_config)
+
+"""Anh xa cac category theo dung services xu li cua no"""
+MQTT_SERVICE_ROUTER: Dict[str, Callable] = {
+    "status": device_manager_service.process_lifecycle_status,
+    "telemetry": device_manager_service.process_hardware_telemetry,
+    "shadow": device_manager_service.process_device_shadow,
+    "audio": audio_engine_service.handle_stream
+    # Muon them thi them o day
+}
+
+"""Phân rã chuỗi quy chuẩn: iot_schedule/<device_id>/<category>/<action>"""
+def parse_topic (topic: str):
+    parts = topic.split("/")
+    if len(parts) >= 4 and parts[0] == "iot_schedule":
+        return parts[1], parts[2], "/".join(parts[3:])
+    return None, None, None
 
 def publish_message(topic: str, payload: dict, qos: int = 1, retain: bool = False):
     """Hàm bọc (Wrapper) để tự động chuyển dict thành JSON và in log"""
@@ -40,16 +59,39 @@ def subscribe_topic(topic: str, qos: int = 1):
 def on_connect(client: MQTTClient, flags: int, rc: int, properties: Any):
     logger.info(f"Backend đã kết nối tới MQTT Broker (Code: {rc})")
     # Tự động lắng nghe trạng thái của tất cả ESP32 khi server vừa bật
-    client.subscribe("device/+/status", qos=1)
+    client.subscribe("iot_schedule/#", qos=1)
+
 
 @fast_mqtt.on_message()
 async def on_message(client: MQTTClient, topic: str, payload: bytes, qos: int, properties: Any):
     """Hàm này hứng mọi tin nhắn mà Backend đã subscribe"""
+    device_id, category, action = parse_topic(topic)
+    if not device_id:
+        return
+    
+    target_service = MQTT_SERVICE_ROUTER.get(category)
+    if target_service:
+        logger.warning(f"Category khong co trong danh muc co the xu li: {category}")
+        return
+
     try:
-        msg_str = payload.decode('utf-8')
-        logger.info(f"[NHẬN] Topic: {topic} | Payload: {msg_str}")
+        if category == "audio":
+            # Neu du lieu la audio (truyen theo dang nhi phan)
+            # Day payload thang xuong luon, khong parse json 
+            await target_service(device_id, action, payload)
+        else:
+            #parse json cho payload 
+            msg_str = payload.decode(str = "utf-8")
+            json_data = json.loads(msg_str)
+            # Service xu li json sau
+            await target_service(device_id, action, json_data)
+    except UnicodeDecodeError:
+        logger.error(f"[{device_id}] Gói tin tại {topic} không phải định dạng UTF-8 hợp lệ!")
+    except json.JSONDecodeError:
+        logger.error(f"[{device_id}] Bản tin từ {topic} không tuân thủ JSON quy chuẩn!")
     except Exception as e:
-        logger.error(f"Lỗi giải mã payload từ topic {topic}: {e}")
+        logger.error(f"Lỗi hệ thống khi xử lý gói tin tầng ứng dụng ({topic}): {e}", exc_info=True)
+    
 
 @fast_mqtt.on_disconnect()
 def on_disconnect(client: MQTTClient, packet, exc=None):
