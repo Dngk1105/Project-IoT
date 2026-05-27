@@ -1,3 +1,38 @@
+#Chuyển trạng thái kết nối internet
+```mermaid
+flowchart TD
+    subgraph "Core 0: Network & Comm (Event-Driven)"
+        W[Wi-Fi Event Loop]
+        M[MQTT Task / Callback]
+        H[Heartbeat Timer]
+    end
+
+    subgraph "Core 1: Logic & Hardware (Real-time)"
+        FSM[FSM App Logic Task]
+        A[Audio Playback Task]
+    end
+
+    subgraph "Bộ nhớ đệm dùng chung (Shared Memory)"
+        RB[(FreeRTOS RingBuffer\n~16KB)]
+        S[Biến State: sys_state, app_state]
+    end
+
+    %% Luồng Lớp 1 & 2
+    W -- Lớp 1: Rớt mạng --> S
+    M -- Lớp 2: Rớt Broker --> S
+
+    %% Luồng Lớp 3
+    H -- Lớp 3: Check Ping/Pong --> S
+
+    %% Luồng Lớp 4 (RingBuffer)
+    M -- Lớp 4: Ghi data cực nhanh --> RB
+    RB -- Lớp 4: Đọc từ từ (Anti-Jitter) --> A
+    A -- Xuất tín hiệu --> I2S[MAX98357A]
+
+    %% FSM Điều phối
+    S -. FSM Giám sát .-> FSM
+```
+
 #Đồng bộ lịch
 ```mermaid
 sequenceDiagram
