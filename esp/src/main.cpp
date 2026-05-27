@@ -9,6 +9,7 @@
 #include "esp_log.h"
 #include "system_state.h"
 #include "mqtt_protocol.h"
+#include "button_core.h"
 
 
 static const char *TAG = "MAIN_APP";
@@ -43,7 +44,6 @@ void mqtt_task_runner(void *pvParameters) {
     while (1){
         if (mqtt_is_connected()) {
             set_sys_state(SYS_MQTT_OK);
-            audio_start_streaming(false);
         } else {
             if (get_sys_state() == SYS_MQTT_OK) // Rot ket noi, quay tro ve trang thai cu
                 set_sys_state(SYS_WIFI_OK);
@@ -66,6 +66,8 @@ void app_logic_task(void *pvParameters) {
     // Khởi tạo các ngoại vi
     time_core_init();
     audio_i2s_init();
+
+    button_core_init();
 
     ESP_LOGI(TAG, "Logic Task bắt đầu hoạt động...");
     // Biến lưu thời điểm cuối cùng xin giờ

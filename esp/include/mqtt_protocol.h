@@ -21,6 +21,7 @@ void mqtt_proto_get_shadow_topic(const char* device_id, char* out_buffer, size_t
 void mqtt_proto_get_pong_topic(const char* device_id, char* out_buffer, size_t max_len);
 void mqtt_proto_get_status_topic(const char* device_id, char* out_buffer, size_t max_len);
 void mqtt_proto_get_audio_up_topic(const char* device_id, char* out_buffer, size_t max_len);
+void mqtt_proto_get_audio_control_topic(const char* device_id, char* out_buffer, size_t max_len);
 
 // Topic dùng để ESP32 Publish lên Server
 void mqtt_proto_get_time_req_topic(const char* device_id, char* out_buffer, size_t max_len);

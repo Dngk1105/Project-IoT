@@ -250,7 +250,7 @@ void audio_start_streaming(bool enable) {
         is_streaming = false;
         // if (voice_watchdog_timer) xTimerStop(voice_watchdog_timer, 0);
         // audio_stream_task_handle = NULL;
-        ESP_LOGI(TAG, "⛔ Dừng Stream Mic");
+        ESP_LOGI(TAG, "Dừng Stream Mic");
     }
 }
 

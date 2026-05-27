@@ -24,6 +24,7 @@
  * ========================================================================= */
 // --- Ngoại vi cơ bản ---
 #define PIN_BTN_WAKE            0       // Nút bấm vật lý (Boot button)
+#define PUSH_TO_TALK_BTN        GPIO_NUM_17      // An giu de stream am thanh
 
 // --- I2S Audio ---
 // I2S_NUM_0 — INMP441 Microphone (RX only)

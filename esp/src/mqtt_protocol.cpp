@@ -36,6 +36,10 @@ void mqtt_proto_get_audio_up_topic(const char* device_id, char* out_buffer, size
     snprintf(out_buffer, max_len, "%s/%s/audio/stream_up", PROJECT_PREFIX, device_id);
 }
 
+void mqtt_proto_get_audio_control_topic(const char* device_id, char* out_buffer, size_t max_len) {
+    snprintf(out_buffer, max_len, "%s/%s/events/audio_control", PROJECT_PREFIX, device_id);
+}
+
 /* =========================================================================
  * THỰC THI BỘ ĐÓNG GÓI PAYLOAD
  * ========================================================================= */
