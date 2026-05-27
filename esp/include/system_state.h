@@ -47,6 +47,12 @@ bool request_app_state(app_state_t new_state);
 app_state_t get_app_state(void);
 sys_state_t get_sys_state(void);
 
+bool is_system_idle(void);
+void force_app_state_idle(void);
+
+const char* sys_state_to_str(sys_state_t state);
+const char* app_state_to_str(app_state_t state);
+
 #ifdef __cplusplus
 }
 #endif
