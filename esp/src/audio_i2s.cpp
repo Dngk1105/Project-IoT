@@ -2,6 +2,7 @@
 #include "config.h"
 #include "mqtt_handler.h"
 #include "system_state.h"
+#include "mqtt_protocol.h"
 #include "esp_log.h"
 #include "driver/i2s_std.h"
 #include "freertos/FreeRTOS.h"
@@ -162,8 +163,7 @@ static void audio_stream_task(void *pvParameters) {
             // VAD: chỉ publish khi có giọng nói thật
             if (avg > VAD_AMPLITUDE_THRESHOLD) {
                 char topic[80];
-                snprintf(topic, sizeof(topic), "iot_schedule/%s/audio/stream_up",
-                         mqtt_get_device_id());
+                mqtt_proto_get_audio_up_topic(mqtt_get_device_id(), topic, sizeof(topic));
                 mqtt_handler_publish(topic, (const char*)pcm_buf,
                                      (int)(sample_count * 2), 0, 0);
                 // ESP_LOGI(TAG, "🎤 %d samples | Amplitude: %d 🔊", sample_count, avg);

@@ -6,6 +6,7 @@
 #include "esp_log.h"
 #include "esp_mac.h"
 #include "wifi_core.h"
+#include "mqtt_protocol.h"
 #include <string.h>
 #include <stdio.h>
 #include "cJSON.h"
@@ -111,7 +112,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
             set_sys_state(SYS_MQTT_OK); 
             
             /* Subscribe các topic theo đúng MQTT Convention */
-            char cmd_topic[80], audio_down_topic[80], shadow_topic[80], events_topic[80], pong_topic[80];
+            char cmd_topic[80], audio_down_topic[80], shadow_topic[80], pong_topic[80];
             
             snprintf(cmd_topic,       sizeof(cmd_topic),       "iot_schedule/%s/commands/#", device_id);
             snprintf(audio_down_topic,sizeof(audio_down_topic),"iot_schedule/%s/audio/stream_down", device_id);
@@ -125,19 +126,26 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
             mqtt_handler_subscribe(pong_topic, 0);
 
             //Xin dong bo time voi server
-            char time_request_topic[80];
-            snprintf(time_request_topic, sizeof(time_request_topic), "iot_schedule/%s/events/time_request", device_id);
-            mqtt_handler_publish(time_request_topic, "{\"action\":\"get_time\"}", 0, 1, 0); // qos 1, khong retain
+            char time_req_topic[80];
+            mqtt_proto_get_time_req_topic(device_id, time_req_topic, sizeof(time_req_topic));
+            cJSON* data = cJSON_CreateObject();
+            cJSON_AddStringToObject(data, "action", "get_time");
+            char* payload_str = mqtt_proto_build_standard_payload(data);
+            mqtt_handler_publish(time_req_topic, payload_str, 0, 1, 0); // qos 1, khong retain
+            free(payload_str);
 
             ESP_LOGI(TAG, "Đã subscribe đầy đủ các topic chính");
 
-            /* Publish Birth Message (Online) */
-            char birth_payload[128];
-            uint32_t current_time = get_current_unix_timestamp();
-            snprintf(birth_payload, sizeof(birth_payload), 
-                    "{\"status\":\"online\",\"timestamp\":%lu}", current_time);
-            
+            /* Publish Birth Message (Online)
+            * Gui thong bao cho server biet thiet bi vua online
+            */
+            cJSON* data = cJSON_CreateObject();
+            cJSON_AddStringToObject(data, "status", "online");
+            cJSON_AddNumberToObject(data, "timestamp", get_current_unix_timestamp());
+
+            char* birth_payload = mqtt_proto_build_standard_payload(data);
             mqtt_handler_publish(status_topic, birth_payload, 0, 1, 1);
+            free(birth_payload);
             ESP_LOGI(TAG, "Published Birth Message to %s", status_topic);
             break;
         }
