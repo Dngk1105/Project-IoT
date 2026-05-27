@@ -52,6 +52,46 @@ function playRawPCM(messageBuffer) {
     nextPlayTime += audioBuffer.duration;
 }
 
+
+document.getElementById('btnSendBeep').addEventListener('click', () => {
+    if (!client || !client.connected) {
+        alert("Vui lòng kết nối Broker trước!");
+        return;
+    }
+
+    // Cấu hình âm thanh chuẩn với ESP32: 16kHz, 16-bit Mono
+    const sampleRate = 16000;
+    const duration = 0.5; // Dài nửa giây
+    const numSamples = sampleRate * duration; 
+    const frequency = 440; // Tần số 440Hz (Nốt La chuẩn)
+    const volume = 10000; // Biên độ (Max 32767, để 10000 cho khỏi cháy loa)
+
+    // Tạo mảng 16-bit
+    const pcmBuffer = new Int16Array(numSamples);
+    
+    // Đổ sóng Sin vào mảng
+    for (let i = 0; i < numSamples; i++) {
+        const t = i / sampleRate;
+        pcmBuffer[i] = Math.sin(2 * Math.PI * frequency * t) * volume;
+    }
+
+    // Ép kiểu về mảng Byte (Uint8) để gửi qua mạng
+    const payload = new Uint8Array(pcmBuffer.buffer);
+    
+    // Điền ID thiết bị của huynh vào đây
+    const targetDeviceId = "e072a1d6f1bc"; 
+    const topic = `iot_schedule/${targetDeviceId}/audio/stream_down`;
+
+    // Bắn gói tin QoS 0 cho nhẹ mạng
+    client.publish(topic, payload, { qos: 0 }, (err) => {
+        if (!err) {
+            appendLog('OUT', topic, `[🎵 Đã bắn tiếng Bíp: ${payload.length} bytes]`);
+        } else {
+            appendLog('OUT', 'ERROR', 'Gửi thất bại: ' + err);
+        }
+    });
+});
+
 // ==========================================
 // HỆ THỐNG GIAO DIỆN & MQTT
 // ==========================================

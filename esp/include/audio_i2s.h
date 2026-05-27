@@ -76,6 +76,11 @@ esp_err_t audio_test_loopback(void);
  */
 void audio_i2s_deinit(void);
 
+/**
+ * Xa buffer phat ra loa
+ */
+void audio_flush_playback(void);
+
 #ifdef __cplusplus
 }
 #endif

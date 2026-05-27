@@ -75,7 +75,7 @@ void app_logic_task(void *pvParameters) {
     }
 
     ESP_LOGI(TAG, "Device ID: %s", mqtt_get_device_id());
-    audio_start_streaming(true);
+    audio_start_streaming(false);
 
     // Vòng lặp giám sát trạng thái
     while (1) {

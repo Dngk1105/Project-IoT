@@ -8,12 +8,18 @@
 #include "freertos/timers.h"
 #include <stdlib.h>
 #include <string.h>
+#include "esp_timer.h"
 
 static const char *TAG = "AUDIO_I2S";
 
 static bool is_streaming = false;
 static TaskHandle_t audio_stream_task_handle = NULL;
 static TimerHandle_t voice_watchdog_timer = NULL;
+
+//Xu li byte thua sau khi phat playback     
+static uint8_t leftover_byte = 0;
+static bool has_leftover = false;
+
 static i2s_chan_handle_t rx_handle = NULL;  // I2S_NUM_0 — INMP441
 static i2s_chan_handle_t tx_handle = NULL;  // I2S_NUM_1 — MAX98357A
 
@@ -54,7 +60,7 @@ static i2s_std_config_t mic_config = {
  * CONFIG I2S_NUM_1 — MAX98357A Speaker
  *
  * slot_mode = STEREO : MAX98357A bắt buộc cần stereo clock
- * bit_shift = false  : Không dùng Philips delay
+
  * ========================================================================= */
 static i2s_std_config_t spk_config = {
     .clk_cfg  = I2S_STD_CLK_DEFAULT_CONFIG(AUDIO_SAMPLE_RATE),
@@ -65,8 +71,8 @@ static i2s_std_config_t spk_config = {
         .slot_mask      = I2S_STD_SLOT_BOTH,
         .ws_width       = 16,
         .ws_pol         = false,
-        .bit_shift      = false,
-        .left_align     = true,
+        .bit_shift      = true,
+        .left_align     = false,
         .big_endian     = false,
         .bit_order_lsb  = false
     },
@@ -221,7 +227,6 @@ void audio_start_streaming(bool enable) {
     } else if (!enable && is_streaming) {
         is_streaming = false;
         if (voice_watchdog_timer) xTimerStop(voice_watchdog_timer, 0);
-        vTaskDelay(pdMS_TO_TICKS(200));
         audio_stream_task_handle = NULL;
         ESP_LOGI(TAG, "⛔ Dừng Stream Mic");
     }
@@ -236,37 +241,68 @@ void audio_reset_watchdog(void) {
 /* =========================================================================
  * PHÁT ÂM THANH TỪ SERVER → LOA
  * Duplicate mono → stereo cho MAX98357A STEREO config
+ * Nếu data bị chia ra thành từng chunk, nếu có chunk lẻ thì cần ghép nối byte thừa và chunk mới 
  * ========================================================================= */
 esp_err_t audio_playback(const uint8_t* data, size_t len) {
     if (!data || len == 0 || !tx_handle) return ESP_ERR_INVALID_ARG;
-
-    const int16_t* mono = (const int16_t*)data;
-    size_t mono_count   = len / 2;
     
     // Dùng bộ đệm tĩnh, tránh cấp phát quá nhiều vùng nhớ trên heap
     // Cấp phát static 
     // nhận tối đa MAX_STEREO_SAMPLES 1024 => 2048 byte mono => 4096 stero
     static int16_t stereo[MAX_STEREO_SAMPLES * 2];
-    if (mono_count > MAX_STEREO_SAMPLES) {
-        ESP_LOGE(TAG, "Gói tin audio quá lớn so với buffer tĩnh (%d > %d)!", mono_count, MAX_STEREO_SAMPLES);
-        return ESP_ERR_NO_MEM;
-    }
+    size_t sample_count = 0;
+    size_t data_idx = 0;
 
-    for (size_t i = 0; i < mono_count; i++) {
-        int32_t v = (int32_t)mono[i] * 2;
+    // Neu co byte thua, ghep byte dau tien vao chunk 
+    if (has_leftover && len > 0){
+        // Chuẩn PCM Little Endian: Byte lẻlà LSB, Byte mới là MSB
+        uint16_t sample = leftover_byte | ((uint16_t)data[0] << 8);
+        int32_t v = (int16_t)sample * 2;
         if (v >  32767) v =  32767;
         if (v < -32768) v = -32768;
-        stereo[i * 2]     = (int16_t)v;  // LEFT
-        stereo[i * 2 + 1] = (int16_t)v;  // RIGHT
+        
+        stereo[0] = (int16_t)v; // LEFT
+        stereo[1] = (int16_t)v; // RIGHT
+        sample_count++;
+        data_idx++; // Đã dùng mất 1 byte của chunk mới
+        has_leftover = false;
     }
 
-    size_t written = 0;
-    esp_err_t ret = i2s_channel_write(tx_handle, stereo, mono_count * 2 *sizeof(int16_t),
-                                      &written, pdMS_TO_TICKS(500));
+    // Xu li cac cap byte tiep theo
+    while (data_idx + 1 < len) {
+        // Nếu buffer đầy thì xả ra I2S trước để lấy chỗ trống
+        if (sample_count >= MAX_STEREO_SAMPLES) {
+            size_t written = 0;
+            i2s_channel_write(tx_handle, stereo, sample_count * 2 * sizeof(int16_t), &written, pdMS_TO_TICKS(500));
+            sample_count = 0;
+        }
 
-    if (ret != ESP_OK) ESP_LOGE(TAG, "Write lỗi: 0x%x", ret);
-    else ESP_LOGD(TAG, "🔊 Phát %d/%d bytes", written, mono_count * 2 *sizeof(int16_t));
-    return ret;
+        uint16_t sample = data[data_idx] | ((uint16_t)data[data_idx + 1] << 8);
+        int32_t v = (int16_t)sample * 2;
+        if (v >  32767) v =  32767;
+        if (v < -32768) v = -32768;
+        
+        stereo[sample_count * 2]     = (int16_t)v;
+        stereo[sample_count * 2 + 1] = (int16_t)v;
+        sample_count++;
+        data_idx += 2;
+    }
+
+    // Nếu chunk này lẻ, dư ra 1 byte cuối cùng
+    if (data_idx < len) {
+        leftover_byte = data[data_idx];
+        has_leftover = true;
+    }
+
+    if (sample_count > 0) {
+        size_t written = 0;
+        esp_err_t ret = i2s_channel_write(tx_handle, stereo, sample_count * 2 * sizeof(int16_t), &written, pdMS_TO_TICKS(500));
+
+        if (ret != ESP_OK) ESP_LOGE(TAG, "Write lỗi: 0x%x", ret);
+        return ret;
+    }
+
+    return ESP_OK;
 }
 
 /* =========================================================================
@@ -279,3 +315,20 @@ void audio_i2s_deinit(void) {
     if (voice_watchdog_timer) { xTimerDelete(voice_watchdog_timer, 0); voice_watchdog_timer = NULL; }
     ESP_LOGI(TAG, "I2S deinit hoàn tất.");
 }
+
+//Xa buffer phat ra loa
+void audio_flush_playback(void) {
+    has_leftover = false;
+    leftover_byte = 0;
+    
+    uint8_t silence_buf[2048] = {0}; 
+    size_t written = 0;
+
+    // Bo dem dma khoang 24KB
+    for(int i = 0; i < 12; i++) {
+        i2s_channel_write(tx_handle, silence_buf, sizeof(silence_buf), &written, pdMS_TO_TICKS(100));
+    }
+
+    ESP_LOGI(TAG, "Đã xả DMA (Bơm Silence) thành công.");
+}
+

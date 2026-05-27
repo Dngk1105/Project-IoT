@@ -83,40 +83,87 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
             ESP_LOGI(TAG, "MQTT Subscribed successfully, msg_id=%d", event->msg_id);
             break;
 
-        case MQTT_EVENT_DATA:
-            ESP_LOGI(TAG, "MQTT Message Received");
-            ESP_LOGI(TAG, "TOPIC=%.*s", event->topic_len, event->topic);
-            ESP_LOGI(TAG, "DATA len=%d bytes", event->data_len);
+        case MQTT_EVENT_DATA: {
+            /*
+            thư viện esp-mqtt khi nhận file lớn, nó băm nhỏ file ra (chống tràn RAM)
+            Mảnh đầu tiên chứa toptic và các mảnh sau chứa data
+            VD: I (14135) MQTT_HANDLER: MQTT Message Received
+                I (14135) MQTT_HANDLER: TOPIC=iot_schedule/e072a1d6f1bc/audio/stream_down
+                I (14135) MQTT_HANDLER: DATA len=4047 bytes
+                I (14135) MQTT_HANDLER: [STREAM_DOWN] Nhận chunk audio TTS từ Server (4047 bytes)
+                I (14195) MQTT_HANDLER: MQTT Message Received
+                I (14195) MQTT_HANDLER: TOPIC=
+                I (14195) MQTT_HANDLER: DATA len=224 bytes
+            nếu so sánh strstr() vào event->topic chắc chắn sẽ trả về lỗi vì topic = null
+            */
+           /// Goi tin audio lon co the bi bam ra, can luong nhan data nay
+           static bool is_audio_stream = false;
 
-            // Xử lý theo Sơ đồ Tuần tự
+           // Manh dau tien
+           if (event->current_data_offset == 0){
+               // Parse topic neu co
+               char safe_topic[128] = {0};
+               int copy_len = (event->topic_len < sizeof(safe_topic) - 1) ? event->topic_len : sizeof(safe_topic) - 1;
+               if (event->topic && event->topic_len > 0){
+                   strncpy(safe_topic, event->topic, copy_len);
+               } 
+               ESP_LOGI(TAG, "MQTT Message Received | Tổng dung lượng: %d bytes", event->total_data_len);
+               ESP_LOGI(TAG, "TOPIC = %s", safe_topic);
 
-            // 1. Lệnh đồng bộ lịch từ Server
-            if (strstr(event->topic, "/commands/sync_schedule") != NULL) {
-                ESP_LOGI(TAG, "[SYNC_SCHEDULE] Nhận lệnh đồng bộ lịch từ Server");
-                // TODO: Gọi hàm local_storage_sync_schedule(...)
-                // Sau khi xử lý xong → gửi Application ACK với Correlation Data
+               // Xử lý theo Sơ đồ Tuần tự
+               // 1. Lệnh đồng bộ lịch từ Server
+               if (strstr(event->topic, "/commands/sync_schedule") != NULL) {
+                    is_audio_stream = false;
+                    ESP_LOGI(TAG, "[SYNC_SCHEDULE] Nhận lệnh đồng bộ lịch từ Server");
+                   // TODO: Gọi hàm local_storage_sync_schedule(...)
+                   // Sau khi xử lý xong → gửi Application ACK với Correlation Data
+               }
+
+               // 2. Nhận Audio Stream từ Server (TTS)
+               else if (strstr(event->topic, "/audio/stream_down") != NULL) {
+                    ESP_LOGI(TAG, "[STREAM_DOWN] Nhận chunk audio TTS từ Server (%d bytes)", event->data_len);
+                    is_audio_stream = true;
+               }
+               
+               // 3. Lệnh điều khiển Device Shadow
+                else if (strstr(event->topic, "/shadow/") != NULL) {
+                    is_audio_stream = false;
+                    ESP_LOGI(TAG, "[SHADOW] Nhận lệnh điều khiển ngoại vi");
+                    // TODO: device_shadow_process_command(...)
+                }
+
+                else if (strstr(safe_topic, "/events/") != NULL) {
+                    is_audio_stream = false;
+                    ESP_LOGI(TAG, "[EVENT] Nhận event từ Server");
+                }
+                
+                // 4. Event từ Server (snooze, stop, ...)
+                else if (strstr(event->topic, "/events/") != NULL) {
+                    ESP_LOGI(TAG, "[EVENT] Nhận event từ Server");
+                }
+                
+                else {
+                    is_audio_stream = false;
+                }
             }
+            if (is_audio_stream){
+                ESP_LOGD(TAG, "  -> Ghi chunk audio ra loa: %d bytes (Offset: %d)", event->data_len, event->current_data_offset);
 
-            // 2. Nhận Audio Stream từ Server (TTS)
-            else if (strstr(event->topic, "/audio/stream_down") != NULL) {
-                ESP_LOGI(TAG, "[STREAM_DOWN] Nhận chunk audio TTS từ Server (%d bytes)", event->data_len);
-                audio_playback((const uint8_t*)event->data, event->data_len);
-                audio_reset_watchdog();        // Reset watchdog khi nhận được phản hồi
-            }
+                if (event->data != NULL && event->data_len > 0) {
+                    audio_playback((const uint8_t*)event->data, event->data_len);
+                }
 
-            // 3. Lệnh điều khiển Device Shadow
-            else if (strstr(event->topic, "/shadow/") != NULL) {
-                ESP_LOGI(TAG, "[SHADOW] Nhận lệnh điều khiển ngoại vi");
-                // TODO: device_shadow_process_command(...)
-            }
+                // Nếu đã nhận đủ tổng số byte -> Hết gói tin, hạ cờ chờ lệnh mới
+                if (event->current_data_offset + event->data_len >= event->total_data_len) {
+                    ESP_LOGI(TAG, "[STREAM_DOWN] Đã nhận và phát xong toàn bộ cục Audio.");
+                    is_audio_stream = false;
 
-            // 4. Event từ Server (snooze, stop, ...)
-            else if (strstr(event->topic, "/events/") != NULL) {
-                ESP_LOGI(TAG, "[EVENT] Nhận event từ Server");
+                    audio_flush_playback();
+                }
             }
 
             break;
-
+        }
         case MQTT_EVENT_ERROR:
             ESP_LOGE(TAG, "MQTT Error Occurred");
             break;
