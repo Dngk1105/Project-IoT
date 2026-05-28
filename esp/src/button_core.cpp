@@ -37,20 +37,8 @@ static void on_ptt_pressed(void) {
 
 static void on_ptt_released(void) {
     ESP_LOGI(TAG, "Nút PTT được NHẢ! Dừng thu âm, chờ Server...");
-    if (get_app_state() == STATE_STREAM_UP) {
+    if (get_app_state() == STATE_STREAM_UP)
         audio_request_stop();
-        
-        char topic[80];
-        mqtt_proto_get_audio_control_topic(mqtt_get_device_id(), topic, sizeof(topic));
-        cJSON* data = cJSON_CreateObject();
-        cJSON_AddStringToObject(data, "state", "stop_stream");
-        char* payload = mqtt_proto_build_standard_payload(data);
-        mqtt_handler_publish(topic, payload, 0, 1, 0);
-        free(payload);
-
-        // Kích hoạt Watchdog 5 giây
-        request_app_state(STATE_WAIT_SERVER);
-    }
 }
 
 static button_context_t my_buttons[] = {

@@ -194,8 +194,8 @@ static void audio_stream_task(void *pvParameters) {
                     mqtt_handler_publish(ctrl_topic, payload, 0, 1, 0);
                     free(payload);
 
-                    // Báo hiệu FSM chuyển trạng thái 
-                    //request_app_state(STATE_WAIT_SERVER);
+                    //Báo hiệu FSM chuyển trạng thái 
+                    request_app_state(STATE_WAIT_SERVER);
                 }
             }
 
