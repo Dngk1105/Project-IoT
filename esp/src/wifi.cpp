@@ -51,9 +51,9 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
         // Thoi gian cho ket noi lai tinh theo cong thuc
         // Delay = BaseTime * 2^retry_num
         // Gioi han toi da 300s 
-        int backoff_ms = (1000 * pow(2, retry_num)); // base = 1s
-        if (backoff_ms > 300000 || backoff_ms <= 0) // <0 de tranh tran so
-            backoff_ms = 300000;
+        int backoff_ms = (WIFI_BACKOFF_BASE_MS * pow(2, retry_num)); // base = 1s
+        if (backoff_ms > WIFI_MAX_BACKOFF_MS || backoff_ms <= 0) // <0 de tranh tran so
+            backoff_ms = WIFI_MAX_BACKOFF_MS;
         
         ESP_LOGW(TAG, "Mat mang! dang ket noi lai. Thử lại sau %d ms...", backoff_ms);
 

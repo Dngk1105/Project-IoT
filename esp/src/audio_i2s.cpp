@@ -115,7 +115,7 @@ void audio_request_stop(void) {
     is_stop_requested = true;
     // Giả sử mỗi vòng lặp đọc 20ms audio. 
     // Muốn vét đuôi 400ms thì cần đọc thêm 20 vòng nữa (400/20 = 20)
-    flush_chunks_remaining = 20; 
+    flush_chunks_remaining = AUDIO_FLUSH_CHUNKS; 
 }
 
 // Watchdog la giam sat trang thai ung dung
@@ -162,7 +162,7 @@ static void audio_stream_task(void *pvParameters) {
             // High-pass IIR — cắt DC offset còn lại
             for (size_t i = 0; i < sample_count; i++) {
                 int32_t x  = (int32_t)pcm_buf[i];
-                int32_t y  = x - dc_x_prev + (int32_t)(0.97f * (float)dc_y_prev);
+                int32_t y  = x - dc_x_prev + (int32_t)(HPF_COEFF * (float)dc_y_prev);
                 dc_x_prev  = x;
                 dc_y_prev  = y;
                 if (y >  32767) y =  32767;
@@ -217,7 +217,7 @@ static void audio_stream_task(void *pvParameters) {
             } else {
                 silence_duration_ms += chunk_time_ms; 
             }
-            uint32_t active_timeout = has_started_speaking ? 1200 : 5000;
+            uint32_t active_timeout = has_started_speaking ? VAD_SILENCE_TIMEOUT_MS : VAD_INITIAL_TIMEOUT_MS;
             // Nếu người dùng im lặng quá 1.5 giây VÀ chưa từng phát lệnh dừng
             if (silence_duration_ms >= active_timeout && !is_stop_requested) {
                 if (has_started_speaking) ESP_LOGW(TAG, "Qua thoi gian cho noi, huy stream");

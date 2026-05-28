@@ -8,6 +8,10 @@
 #define WIFI_PASSWORD           "98755370"
 #define WIFI_MAX_RETRY          5       // Số lần thử kết nối lại trước khi reset module
 
+/* Backoff reconnect */
+#define WIFI_BACKOFF_BASE_MS    1000
+#define WIFI_MAX_BACKOFF_MS     300000
+
 /* =========================================================================
  * THÔNG SỐ MQTT BROKER
  * ========================================================================= */
@@ -19,6 +23,7 @@
 #define MQTT_BUFFER_IN_SIZE     8192
 #define MQTT_BUFFER_OUT_SIZE   4096
 
+#define PROJECT_PREFIX          "iot_schedule"
 /* =========================================================================
  * BẢN ĐỒ CHÂN KẾT NỐI (GPIO MAPPING)
  * ========================================================================= */
@@ -41,7 +46,6 @@
 /* =========================================================================
  * CẤU HÌNH AUDIO & XỬ LÝ GIỌNG NÓI
  * ========================================================================= */
-#define MAX_STEREO_SAMPLES 4096
 #define AUDIO_SAMPLE_RATE       16000   // 16kHz chuẩn cho nhận diện giọng nói (STT)
 #define AUDIO_CHANNELS          1       // Mono
 #define AUDIO_BITS_PER_SAMPLE   16      // 16-bit
@@ -49,17 +53,41 @@
 #define VAD_THRESHOLD_DB        -40.0f  // Ngưỡng decibel để kích hoạt Voice Activity Detection
 #define VAD_AMPLITUDE_THRESHOLD 80
 
+#define MAX_STEREO_SAMPLES 4096
 #define RINGBUF_SIZE 16384 // 16KB
 #define PREBUFFER_BYTES 4096 // Tích đủ 4KB mới bắt đầu phát để chống lag mạng
 
+// VAD Tuning
+#define VAD_AMPLITUDE_THRESHOLD     80
+#define VAD_SILENCE_TIMEOUT_MS      1200     // Sau khi đã nói
+#define VAD_INITIAL_TIMEOUT_MS      5000     // Trước khi nói (timeout ban đầu)
+
+// High-pass filter
+#define HPF_COEFF                   0.97f
+
+// Khi stop stream
+#define AUDIO_FLUSH_CHUNKS          20
 
 /* =========================================================================
- * THỜI GIAN & ĐỒNG BỘ (NTP)
+ * BUTTON CONFIG
+ * ========================================================================= */
+#define BUTTON_DEBOUNCE_PRESS_MS    500
+#define BUTTON_DEBOUNCE_RELEASE_MS  50
+
+
+/* =========================================================================
+ * THỜI GIAN & ĐỒNG BỘ
  * ========================================================================= */
 #define NTP_SERVER_1            "pool.ntp.org"
 #define NTP_SERVER_2            "time.nist.gov"
 #define TIME_SYNC_INTERVAL_MS   3600000 // Đồng bộ lại mỗi 1 tiếng (1000 * 60 * 60)
 #define TIMEZONE_OFFSET_SEC     25200   // Múi giờ VN (UTC+7) = 7 * 60 * 60
+
+/* =========================================================================
+ * WATCHDOG & TIMEOUTS
+ * ========================================================================= */
+#define SERVER_WATCHDOG_MS          5000     // Timeout chờ server phản hồi
+#define TIME_REQUEST_INTERVAL_MS    10000    // Retry xin thời gian
 
 /* =========================================================================
  * TÀI NGUYÊN HỆ THỐNG (FREERTOS TASKS)
@@ -73,5 +101,10 @@
 
 #define TASK_STACK_PERIPHERALS  2048
 #define TASK_PRIO_PERIPHERALS   3       // Ưu tiên thấp (Chớp đèn, còi)
+
+/* =========================================================================
+ * APP LOGIC TUNING
+ * ========================================================================= */
+#define APP_LOGIC_LOOP_DELAY_MS     50      // Tần suất chạy FSM chính
 
 #endif // CONFIG_H

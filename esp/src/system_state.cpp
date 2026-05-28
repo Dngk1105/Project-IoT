@@ -1,6 +1,7 @@
 #include "system_state.h"
 #include "esp_log.h"
 #include "audio_i2s.h"
+#include "config.h"
 
 const char *TAG = "SYSTEM_STATE";
 
@@ -53,7 +54,9 @@ void state_manager_init(void){
     if (state_mutex == NULL){
         state_mutex = xSemaphoreCreateMutex();
 
-        server_wait_watchdog = xTimerCreate("ServerWD", pdMS_TO_TICKS(5000), pdFALSE, (void *)0, server_timeout_callback);
+        //Khoi tao watchdog
+        server_wait_watchdog = xTimerCreate("ServerWD", SERVER_WATCHDOG_MS, pdFALSE, (void *)0, server_timeout_callback);
+        
         ESP_LOGI(TAG, "State Manager đã khởi tạo thành công.");
     }
 }

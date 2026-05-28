@@ -59,7 +59,7 @@ static void button_task(void *pvParameters) {
             
             // Phát hiện Cạnh xuống (Kéo GND -> Nhấn)
             if (level == 0 && !my_buttons[i].is_pressed) { 
-                vTaskDelay(pdMS_TO_TICKS(500)); // Debounce 500ms
+                vTaskDelay(pdMS_TO_TICKS(BUTTON_DEBOUNCE_PRESS_MS));
                 if (gpio_get_level(my_buttons[i].pin) == 0) {
                     my_buttons[i].is_pressed = true;
                     // Kích hoạt Callback nếu có
@@ -70,7 +70,7 @@ static void button_task(void *pvParameters) {
             } 
             // Phát hiện Cạnh lên (Thả GND -> Nhả)
             else if (level == 1 && my_buttons[i].is_pressed) { 
-                vTaskDelay(pdMS_TO_TICKS(50)); // Debounce 50ms
+                vTaskDelay(pdMS_TO_TICKS(BUTTON_DEBOUNCE_RELEASE_MS));
                 if (gpio_get_level(my_buttons[i].pin) == 1) {
                     my_buttons[i].is_pressed = false;
                     // Kích hoạt Callback nếu có

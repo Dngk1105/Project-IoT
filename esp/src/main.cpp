@@ -138,7 +138,7 @@ void app_logic_task(void *pvParameters) {
                 break;
         }
 
-        vTaskDelay(pdMS_TO_TICKS(50)); // 20Hz
+        vTaskDelay(pdMS_TO_TICKS(APP_LOGIC_LOOP_DELAY_MS)); // 20Hz
     }
 
 }
