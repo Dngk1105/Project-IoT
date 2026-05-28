@@ -2,6 +2,7 @@ import logging
 import time
 from typing import Callable
 from core.mqtt_protocol import MqttTopics, PayloadBuilder
+from services.audio_engine import audio_engine_service
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +30,9 @@ class EventProcessorService:
         elif action == "audio_control":
             state = payload.get("data", {}).get("state")
             logger.info(f"Trạng thái Mic của [{device_id}]: {state}")
+            
+            if state == "stop_stream":
+                await audio_engine_service.process_pipeline(device_id, publish_cb)
 
         else:
             logger.warning(f"Sự kiện không xác định từ [{device_id}]: {action}")

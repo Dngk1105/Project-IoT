@@ -36,7 +36,12 @@ class STTClient:
     def _run_whisper_sync(self, wav_io: io.BytesIO) -> str:
         """Hàm chạy đồng bộ (blocking) bọc lõi của Faster-Whisper"""
         # Tham số beam_size=5 giúp AI cân nhắc nhiều cụm từ để cho ra câu chuẩn ngữ pháp nhất
-        segments, info = self.model.transcribe(wav_io, language="vi", beam_size=5)
+        segments, info = self.model.transcribe(
+            wav_io, 
+            language="vi", 
+            beam_size=5,
+            vad_filter=True,
+        )
         
         # Gom các đoạn văn bản (segment) lại thành một câu hoàn chỉnh
         text = "".join([segment.text for segment in segments])
