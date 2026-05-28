@@ -34,13 +34,6 @@ void mqtt_task_runner(void *pvParameters) {
     mqtt_handler_init();
     mqtt_handler_start();
 
-    // // Chờ MQTT kết nối thực sự (mqtt_is_connected() = true)
-    // // Poll mỗi 200ms, tối đa 30 giây
-    // int wait_count = 0;
-    // while (!mqtt_is_connected() && wait_count < 150) {
-    //     vTaskDelay(pdMS_TO_TICKS(200));
-    //     wait_count++;
-    // }
     while (1){
         if (mqtt_is_connected()) {
             set_sys_state(SYS_MQTT_OK);
@@ -148,33 +141,6 @@ void app_logic_task(void *pvParameters) {
         vTaskDelay(pdMS_TO_TICKS(50)); // 20Hz
     }
 
-    // // [FIX] Chờ MQTT kết nối xong trước khi làm gì với audio
-    // ESP_LOGI(TAG, "Đang chờ MQTT sẵn sàng...");
-    // xEventGroupWaitBits(system_event_group, MQTT_READY_BIT,
-    //                     pdFALSE, pdTRUE, portMAX_DELAY);
-    // ESP_LOGI(TAG, "✅ MQTT sẵn sàng — tiếp tục khởi tạo Audio.");
-
-    // // Khởi tạo thời gian và I2S
-    // time_core_init();
-
-    // esp_err_t audio_ret = audio_i2s_init();
-    // if (audio_ret != ESP_OK) {
-    //     ESP_LOGE(TAG, "❌ I2S khởi tạo thất bại (0x%x) — dừng task.", audio_ret);
-    //     vTaskDelete(NULL);
-    //     return;
-    // }
-
-    // ESP_LOGI(TAG, "Device ID: %s", mqtt_get_device_id());
-    // audio_start_streaming(false);
-
-    // // Vòng lặp giám sát trạng thái
-    // while (1) {
-    //     vTaskDelay(pdMS_TO_TICKS(5000));
-    //     ESP_LOGI(TAG, "[STATUS] Streaming: %s | MQTT: %s | Free Heap: %lu bytes",
-    //              audio_is_streaming() ? "ON"  : "OFF",
-    //              mqtt_is_connected()  ? "YES" : "NO",
-    //              esp_get_free_heap_size());
-    // }
 }
 
 /* =========================================================================

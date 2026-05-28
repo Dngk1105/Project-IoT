@@ -56,14 +56,6 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
             backoff_ms = 300000;
         
         ESP_LOGW(TAG, "Mat mang! dang ket noi lai. Thử lại sau %d ms...", backoff_ms);
-        // if (retry_num < WIFI_MAX_RETRY) {
-        //     esp_wifi_connect();
-        //     retry_num++;
-        //     ESP_LOGW(TAG, "Mất kết nối. Đang thử lại (%d/%d)...", retry_num, WIFI_MAX_RETRY);
-        // } else {
-        //     ESP_LOGE(TAG, "Kết nối thất bại sau %d lần. Cần khởi động lại hoặc chạy offline.", WIFI_MAX_RETRY);
-        //     // Tùy chọn: esp_restart(); 
-        // }
 
         /*
         * Khoi dong lai timer cho ket noi lai

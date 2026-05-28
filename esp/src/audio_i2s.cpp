@@ -275,12 +275,6 @@ esp_err_t audio_i2s_init(void) {
     ESP_ERROR_CHECK(i2s_channel_enable(tx_handle));
     ESP_LOGI(TAG, "MAX98357A (NUM_1 TX) sẵn sàng");
 
-    // voice_watchdog_timer = xTimerCreate("VoiceWD", pdMS_TO_TICKS(5000),
-    //                                     pdFALSE, 0, voice_watchdog_callback);
-    // if (!voice_watchdog_timer) {
-    //     ESP_LOGE(TAG, "Tạo Watchdog Timer thất bại!");
-    //     return ESP_FAIL;
-    // }
 
     // Chay TaskPlayBack ngam
     xTaskCreatePinnedToCore(audio_playback_task, "Audio_Playback",
@@ -296,10 +290,6 @@ esp_err_t audio_i2s_init(void) {
 void audio_start_streaming(bool enable) {
     if (enable && !is_streaming) {
         is_streaming = true;
-        // if (voice_watchdog_timer) {
-        //     xTimerReset(voice_watchdog_timer, 0);
-        //     xTimerStart(voice_watchdog_timer, 0);
-        // }
         xTaskCreatePinnedToCore(audio_stream_task, "Audio_Stream_Up",
                                 TASK_STACK_AUDIO, NULL, TASK_PRIO_AUDIO,
                                 &audio_stream_task_handle, 1);
@@ -307,17 +297,12 @@ void audio_start_streaming(bool enable) {
 
     } else if (!enable && is_streaming) {
         is_streaming = false;
-        // if (voice_watchdog_timer) xTimerStop(voice_watchdog_timer, 0);
-        // audio_stream_task_handle = NULL;
         ESP_LOGI(TAG, "Dừng Stream Mic");
     }
 }
 
 bool audio_is_streaming(void) { return is_streaming; }
 
-// void audio_reset_watchdog(void) {
-//     if (voice_watchdog_timer) xTimerReset(voice_watchdog_timer, 0);
-// }
 
 /* =========================================================================
  * PHÁT ÂM THANH TỪ SERVER → LOA
@@ -325,12 +310,6 @@ bool audio_is_streaming(void) { return is_streaming; }
  * Nếu data bị chia ra thành từng chunk, nếu có chunk lẻ thì cần ghép nối byte thừa và chunk mới 
  * ========================================================================= */
 static void audio_playback_task(void *pvParameters) {    
-    // // Dùng bộ đệm tĩnh, tránh cấp phát quá nhiều vùng nhớ trên heap
-    // // Cấp phát static 
-    // // nhận tối đa MAX_STEREO_SAMPLES 1024 => 2048 byte mono => 4096 stero
-    // static int16_t stereo[MAX_STEREO_SAMPLES * 2];
-    // size_t sample_count = 0;
-    // size_t data_idx = 0;
 
     size_t item_size;
     bool is_prebuffering = true;
