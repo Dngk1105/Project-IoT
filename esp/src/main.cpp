@@ -7,17 +7,25 @@
 #include "time_core.h"
 #include "audio_i2s.h"
 #include "esp_log.h"
+#include "system_state.h"
+#include "mqtt_protocol.h"
+#include "button_core.h"
+
 
 static const char *TAG = "MAIN_APP";
 
-// Event Group để đồng bộ giữa 2 core
-// App_Task (Core 1) chờ MQTT_Task (Core 0) kết nối xong mới bắt đầu stream
-static EventGroupHandle_t system_event_group;
-#define MQTT_READY_BIT BIT0
+/*Doi sang dung bien trang thai de quan li ket noi */
+// // Event Group để đồng bộ giữa 2 core
+// // App_Task (Core 1) chờ MQTT_Task (Core 0) kết nối xong mới bắt đầu stream
+// static EventGroupHandle_t system_event_group;
+// #define MQTT_READY_BIT BIT0
 
 /* =========================================================================
  * TASK MQTT — CORE 0
- * Sau khi mqtt kết nối thành công, set MQTT_READY_BIT để báo Core 1.
+ * Khong tu huy nua, can lien tuc kiem tra ket noi
+ * Neu ket noi wifi thanh cong (sys_state == SYS_WIFI_OK)
+ * Ket noi mqtt thanh cong (sys_state == SYS_MQTT_OK)
+ * Task kiem tra ket noi xxx giay/lan
  * ========================================================================= */
 void mqtt_task_runner(void *pvParameters) {
     wifi_wait_for_connection();
@@ -26,65 +34,113 @@ void mqtt_task_runner(void *pvParameters) {
     mqtt_handler_init();
     mqtt_handler_start();
 
-    // Chờ MQTT kết nối thực sự (mqtt_is_connected() = true)
-    // Poll mỗi 200ms, tối đa 30 giây
-    int wait_count = 0;
-    while (!mqtt_is_connected() && wait_count < 150) {
-        vTaskDelay(pdMS_TO_TICKS(200));
-        wait_count++;
+    while (1){
+        if (mqtt_is_connected()) {
+            set_sys_state(SYS_MQTT_OK);
+        } else {
+            if (get_sys_state() == SYS_MQTT_OK) // Rot ket noi, quay tro ve trang thai cu
+                set_sys_state(SYS_WIFI_OK);
+        }
+        vTaskDelay(pdMS_TO_TICKS(1000)); //Dung tam thoi 1s
     }
-
-    if (mqtt_is_connected()) {
-        ESP_LOGI(TAG, "✅ MQTT đã kết nối — báo hiệu Core 1 bắt đầu.");
-        xEventGroupSetBits(system_event_group, MQTT_READY_BIT);
-    } else {
-        ESP_LOGE(TAG, "❌ MQTT không kết nối được sau 30 giây!");
-        // Vẫn set bit để Core 1 không bị treo mãi — sẽ tự xử lý reconnect
-        xEventGroupSetBits(system_event_group, MQTT_READY_BIT);
-    }
-
-    ESP_LOGI(TAG, "MQTT Task hoàn tất khởi tạo và tự hủy.");
-    vTaskDelete(NULL);
 }
 
 /* =========================================================================
- * TASK ỨNG DỤNG & AUDIO — CORE 1
- *
- * Thứ tự khởi động:
- *   1. Chờ MQTT_READY_BIT từ Core 0
- *   2. Init time + audio
- *   3. Bắt đầu stream thật lên Server
+ * Dieu phoi logic chinh cho ca chuong trinh
+ * Quyet dinh se lam gi voi tung trang thai ung dung
  * ========================================================================= */
 void app_logic_task(void *pvParameters) {
-    wifi_wait_for_connection();
+    // Cho ket noi wifi de dong bo gio
+    while(get_sys_state() == SYS_INIT) 
+        vTaskDelay(pdMS_TO_TICKS(100));
 
-    // [FIX] Chờ MQTT kết nối xong trước khi làm gì với audio
-    ESP_LOGI(TAG, "Đang chờ MQTT sẵn sàng...");
-    xEventGroupWaitBits(system_event_group, MQTT_READY_BIT,
-                        pdFALSE, pdTRUE, portMAX_DELAY);
-    ESP_LOGI(TAG, "✅ MQTT sẵn sàng — tiếp tục khởi tạo Audio.");
-
-    // Khởi tạo thời gian và I2S
+    // wifi_wait_for_connection(); nam trong task mqtt
+    
+    // Khởi tạo các ngoại vi
     time_core_init();
+    audio_i2s_init();
 
-    esp_err_t audio_ret = audio_i2s_init();
-    if (audio_ret != ESP_OK) {
-        ESP_LOGE(TAG, "❌ I2S khởi tạo thất bại (0x%x) — dừng task.", audio_ret);
-        vTaskDelete(NULL);
-        return;
+    button_core_init();
+
+    ESP_LOGI(TAG, "Logic Task bắt đầu hoạt động...");
+    // Biến lưu thời điểm cuối cùng xin giờ
+    TickType_t last_time_request = 0;
+
+    while (1){
+        app_state_t current_state = get_app_state();
+        sys_state_t net_state = get_sys_state();
+
+        if (net_state == SYS_MQTT_OK && !time_core_is_synced()) {
+            // Cứ sau 10 giây (10000ms) nếu vẫn chưa có giờ thì xin lại
+            if (xTaskGetTickCount() - last_time_request > pdMS_TO_TICKS(10000)) {
+                ESP_LOGW(TAG, "Vẫn chưa có giờ chuẩn! Gửi lại yêu cầu Time Sync...");
+                char time_req_topic[80];
+                mqtt_proto_get_time_req_topic(mqtt_get_device_id(), time_req_topic, sizeof(time_req_topic));
+                mqtt_handler_publish(time_req_topic, "{\"action\":\"get_time\"}", 0, 1, 0);
+                
+                last_time_request = xTaskGetTickCount(); // Reset bộ đếm
+            }
+        }
+
+        switch (current_state){
+            case STATE_IDLE:
+                if (time_core_is_synced()){
+                    // 1. Kiểm tra lịch báo thức offline (từ LittleFS)
+                    // if (local_storage_check_alarm_time()) {
+                    //      request_app_state(STATE_ALARMING);
+                    // }
+                    
+                    // 2. Định kỳ bắn Telemetry (Chỉ cần có MQTT)
+                    // if (net_state == SYS_MQTT_OK && time_to_send_telemetry) {
+                    //      telemetry_send_metrics();
+                    // }
+                }
+
+                break;
+            case STATE_ALARMING:
+                // Phát file MP3 cảnh báo từ Flash
+                ESP_LOGI(TAG, "Đang đổ chuông báo thức...");
+                // audio_play_local_mp3("/spiffs/alarm.mp3");
+                // Hen khoang thoi gian phat lien tuc
+                // Phát xong tự động chuyển sang chế độ chờ lệnh
+                request_app_state(STATE_LISTENING);
+                break;
+
+            case STATE_LISTENING:
+                // Kích hoạt ESP-SR (WakeNet/MultiNet)
+                ESP_LOGI(TAG, "Đang chờ người dùng ra lệnh...");
+                // Nếu nghe được "Snooze" -> local_storage_update() -> Gửi Event QoS1 -> Về IDLE
+                // Nếu câu phức tạp -> request_app_state(STATE_STREAM_UP)
+                break;
+
+            case STATE_STREAM_UP:
+                // Đang đẩy mic lên server. Việc đẩy thực tế chạy ở Task khác (audio_stream_task)
+                // Ở đây FSM chỉ giám sát.
+                break;
+            
+            case STATE_WAIT_SERVER:
+                // Đang nằm chờ luồng Stream Down về
+                // Hoac lenh dieu khien he thong
+                // Mien la co phan hoi tu server 
+                // Voice Watchdog sẽ kích nổ nếu kẹt ở đây quá 5 giây.
+                break;
+
+            case STATE_STREAM_DOWN:
+                // Dang phat tieng tu server
+                break;
+
+            case STATE_SYNCING:
+                // Đang ghi File. Cực kỳ nhạy cảm, không được làm việc khác.
+                // local_storage_save_json();
+                // Dong bo time voi server
+                ESP_LOGI(TAG, "Đã ghi xong lịch học. Quay về IDLE.");
+                request_app_state(STATE_IDLE);
+                break;
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(APP_LOGIC_LOOP_DELAY_MS)); // 20Hz
     }
 
-    ESP_LOGI(TAG, "Device ID: %s", mqtt_get_device_id());
-    audio_start_streaming(false);
-
-    // Vòng lặp giám sát trạng thái
-    while (1) {
-        vTaskDelay(pdMS_TO_TICKS(5000));
-        ESP_LOGI(TAG, "[STATUS] Streaming: %s | MQTT: %s | Free Heap: %lu bytes",
-                 audio_is_streaming() ? "ON"  : "OFF",
-                 mqtt_is_connected()  ? "YES" : "NO",
-                 esp_get_free_heap_size());
-    }
 }
 
 /* =========================================================================
@@ -93,16 +149,19 @@ void app_logic_task(void *pvParameters) {
 extern "C" void app_main() {
     ESP_LOGI(TAG, "=== IoT Schedule Edge Device — Khởi động ===");
 
-    // Tạo Event Group đồng bộ trước khi tạo task
-    system_event_group = xEventGroupCreate();
+    // system_event_group = xEventGroupCreate();
+    state_manager_init();
+    set_sys_state(SYS_INIT);
+    request_app_state(STATE_IDLE);
+
 
     wifi_init_sta();
 
-    // Core 0: Mạng & MQTT
+    // Core 0: Mạng & MQTT Lo viec giao tiep, giu nhip PINGREQ va bat tin hieu mang
     xTaskCreatePinnedToCore(mqtt_task_runner, "MQTT_Task",
                             TASK_STACK_MQTT, NULL, TASK_PRIO_MQTT, NULL, 0);
 
-    // Core 1: Audio & Logic (priority cao hơn để xử lý realtime)
+    // Core 1: Audio & Logic: Dieu phoi trang thai, am thanh va doc ghi bo nho
     xTaskCreatePinnedToCore(app_logic_task, "App_Audio_Task",
                             TASK_STACK_AUDIO, NULL, TASK_PRIO_AUDIO, NULL, 1);
 

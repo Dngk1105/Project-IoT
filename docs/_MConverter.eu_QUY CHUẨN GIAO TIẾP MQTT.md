@@ -11,7 +11,8 @@
 - **Duy trì phiên kết nối bền vững (Persistent Session):**
   - Cấu hình MQTT Client trên ESP32 với cờ `Clean Start = False` (đối với v5) và thiết lập một giá trị `Session Expiry Interval` dài (ví dụ: `7200` giây).
   - Mục tiêu: Khi xảy ra rớt mạng ngắn hạn, Mosquitto Broker tự động lưu lại hàng đợi các bản tin điều khiển quan trọng (QoS 1/QoS 2) và đẩy bù ngay khi ESP32 kết nối lại mà không cần subscribe lại từ đầu.
-- **Keep-Alive:** Thiết lập mặc định là **60 giây**. Tác vụ nền trên FreeRTOS của ESP32 phải đảm bảo gửi gói `PINGREQ` đúng hạn khi đường truyền rảnh để Broker không kích hoạt cờ LWT.
+- **Keep-Alive:** Keep-Alive (Siêu nhạy): Thiết lập mặc định là ***10*** giây. Giúp ESP32 và Server phát hiện tình trạng mạng treo, ngay lập tức để ép hệ thống về trạng thái ngoại tuyến an toàn.
+- **Kết nối lại**: Bắt buộc sử dụng thuật toán Lùi thời gian lũy thừa (Exponential Backoff) để tránh bị Router chặn khi rớt mạng (1s, 2s, 4s... tối đa 60s).
 
 ## 2. Quy tắc Đặt tên Topic (Topic Naming Convention)
 
@@ -31,27 +32,26 @@ Tuyệt đối cấm hardcode chuỗi thủ công trong mã nguồn. Cấu trúc
 
 ## 3. Đặc tả Dữ liệu (Payload Specification)
 
-- **Định dạng chuỗi:** **100%** bản tin trạng thái và điều khiển phải là chuỗi **JSON** hợp lệ, mã hóa **UTF-8** và validate qua *Pydantic Schema* ở phía Server.
+- **Định dạng chuỗi:** **100%** bản tin trạng thái và điều khiển (Ngoại trừ luồng audio thô) phải là chuỗi **JSON** hợp lệ, và tuân thủ cấu trúc:
+```json
+{
+  "msg_id": "chuoi-dinh-danh-duy-nhat",
+  "timestamp": 1779422760,
+  "v": "1.0",
+  "data": {
+    // Dữ liệu linh hoạt tuỳ thuộc vào Topic
+  }
+}
+    Phiên bản (v): Bắt buộc có để quản lý tương thích ngược.
+
+    Thời gian (timestamp): Bắt buộc dùng UNIX Timestamp (Kiểu số nguyên).
+
+    Quy tắc Phân tích (Parse) an toàn: Code nhúng trên ESP32 phải cung cấp giá trị mặc định nếu thiếu Key và tự động bỏ qua (ignore) nếu xuất hiện Key lạ chưa được hỗ trợ. Tuyệt đối không để xảy ra lỗi treo chip.
+```
+    
 - **Ngoại lệ Luồng Audio:** Dữ liệu âm thanh thô thu từ Mic I2S (`stream_up`) hoặc luồng phát TTS từ Server (`stream_down`) được truyền tải dưới dạng chuỗi nhị phân thô (*Raw Binary Chunks*) để giảm tối đa overhead.
 - **Kích thước gói:** Giữ Payload JSON nhỏ nhất có thể (Lý tưởng `< 512 Bytes` cho các bản tin định kỳ) để tránh phân mảnh bộ nhớ Heap của ESP32.
 - **Định dạng Thời gian:** Mọi mốc thời gian bên trong Payload **bắt buộc** sử dụng **UNIX Timestamp (Kiểu số nguyên - Integer)**. Nghiêm cấm sử dụng chuỗi định dạng ISO 8601 (như `"2026-05-22T..."`) để giảm tải tài nguyên phân tích chuỗi (*string parsing*) trên MCU.
-
-### Mẫu Payload Telemetry Chuẩn (Bao gồm Giám sát âm thanh)
-
-```json
-{
-  "timestamp": 1779422760,
-  "data": {
-    "free_heap_kb": 128,
-    "rssi": -65,
-    "uptime_s": 3600,
-    "audio_metrics": {
-      "last_audio_heard_ms": 1250,
-      "audio_peak_db": -12
-    }
-  }
-}
-```
 
 ## 4. Quản lý Vòng đời (Device Lifecycle & LWT)
 
@@ -101,15 +101,24 @@ Khi Server thực hiện thay đổi lịch học (Định kỳ hoặc do có th
 3. ESP32 nhận tin, bóc tách JSON và thực hiện gọi hàm ứng dụng ghi xuống Flash (`f_write("/schedule.json")` thông qua module `local_storage.cpp`).
 4. ESP32 publish bản tin phản hồi tầng ứng dụng lên `Response Topic` thu được với QoS 1, payload mang thông tin trạng thái (`{"status": "SUCCESS"}` hoặc `{"status": "FLASH_ERR"}`) kèm theo đúng mã `Correlation Data` (`sync_789`) để Server đối khớp trạng thái Database.
 
-### 6.2. Cơ chế Hàng đợi Ngoại lệ (Offline Queueing) & Voice Watchdog
 
-#### Tương tác âm thanh trực tuyến (`STATE_STREAM_UP`)
+### 6.2. Tương tác âm thanh trực tuyến (`STATE_STREAM_UP`)
+Luồng âm thanh tuân thủ nguyên tắc "Điều khiển bằng JSON, Truyền tải bằng Binary":
 
-Khi thiết bị thu âm và stream dữ liệu lên Server, ESP32 phải chạy một Software Timer Voice Watchdog giới hạn 5 giây. Nếu quá thời gian này mà mạng lỗi (mất kết nối WiFi, Server sập) không có phản hồi TTS về, ngắt Watchdog tự động hủy tác vụ thu phát dở dang, giải phóng bộ đệm ghi âm, phát loa tệp MP3 cảnh báo lỗi mạng cục bộ và đưa thiết bị về trạng thái an toàn `STATE_IDLE`.
+Bắt tay: ESP32 gửi JSON {"action": "start", "session_id": "A1"} (QoS 1) lên topic sự kiện để báo Server mở sẵn bộ đệm.
 
-#### Hành động tương tác Offline (Ví dụ: Báo thức nổ, bấm nút Snooze/Stop khi mất Wi-Fi)
+Truyền tải: ESP32 liên tục múc dữ liệu thô (Binary) đẩy lên topic audio/stream_up (QoS 0).
 
-- Tuyệt đối nghiêm cấm sử dụng các hàm gọi `publish()` cấu hình dạng chặn hệ thống (*Blocking Call*) gây treo luồng chính của FreeRTOS.
-- Ứng dụng phải kích hoạt cơ chế ghi nhật ký trước (Write-Ahead Logging), tuần tự hóa dữ liệu tác vụ và đẩy vào hàng đợi lưu trữ trong phân vùng bộ nhớ Flash tĩnh (LittleFS).
-- Ngay sau khi kết nối mạng được tái thiết lập thành công (dựa trên trạng thái `IP_EVENT_STA_GOT_IP`), một worker chạy nền sẽ quét vùng đệm LittleFS, thực hiện gửi bù dữ liệu thông qua bản tin `Event_Update` với QoS 1.
-- Chỉ khi nhận được gói tin xác nhận mạng `PUBACK` từ phía Broker, ứng dụng mới tiến hành xóa bỏ tệp tin lưu trữ tạm thời ra khỏi LittleFS.
+Kết thúc: Gửi JSON {"action": "stop", "session_id": "A1"} (QoS 1) để Server đóng file và nạp vào AI.
+
+### 6.3. Giám sát Máy chủ (Heartbeat Ping-Pong)
+ESP32 cần biết FastAPI Server có đang hoạt động hay không (Broker sống không đồng nghĩa Server sống).
+
+Định kỳ, hệ thống bắn 1 gói ping (QoS 0).
+
+Server nhận được phải trả lời vào topic pong.
+
+ESP32 lưu lại mốc thời gian nhận pong cuối cùng. Nếu quá 60 giây không thấy phản hồi, ESP32 tự động khóa tính năng giọng nói và chuyển sang báo lỗi cục bộ (Offline Mode).
+### 6.4. Cơ chế Hàng đợi Ngoại lệ (Offline Queueing) & Voice Watchdog
+* Bẫy thời gian (Voice Watchdog): Khi thu phát âm thanh trực tuyến, kích hoạt Timer 5 giây. Quá thời gian không nhận được dữ liệu, thiết bị tự xả bộ đệm, hủy kết nối mạng dở dang và phát cảnh báo Offline.
+* Hàng đợi Offline (Write-Ahead Logging): Các hành động nhấn nút (Snooze/Stop) khi rớt mạng phải được ghi tạm vào Flash (LittleFS). Khi mạng ổn định, một Task nền sẽ đẩy bù các gói tin QoS 1 này lên Server để đồng bộ hóa.
