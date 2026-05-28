@@ -47,7 +47,7 @@
 #define AUDIO_BITS_PER_SAMPLE   16      // 16-bit
 #define AUDIO_BUFFER_SIZE       1024     // ← THÊM DÒNG NÀY
 #define VAD_THRESHOLD_DB        -40.0f  // Ngưỡng decibel để kích hoạt Voice Activity Detection
-#define VAD_AMPLITUDE_THRESHOLD 200
+#define VAD_AMPLITUDE_THRESHOLD 80
 
 #define RINGBUF_SIZE 16384 // 16KB
 #define PREBUFFER_BYTES 4096 // Tích đủ 4KB mới bắt đầu phát để chống lag mạng

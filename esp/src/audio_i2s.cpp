@@ -135,9 +135,12 @@ static void audio_stream_task(void *pvParameters) {
     static int32_t dc_x_prev = 0;
     static int32_t dc_y_prev = 0;
     uint32_t silence_duration_ms = 0; 
-    const uint32_t MAX_SILENCE_TIMEOUT = 1500; // Ngưỡng 1.5 giây im lặng sẽ ngắt
 
     ESP_LOGI(TAG, "Stream Task bắt đầu...");
+
+    // Dùng để lắng nghe liệu có ai đang thực sự nói không
+    // Nếu nghe được có người nói, khoảng nghỉ giữa các từ phải được thu hẹp lại 
+    bool has_started_speaking = false;
 
     while (is_streaming) {
         if (!rx_handle || !mqtt_is_connected()) {
@@ -205,12 +208,19 @@ static void audio_stream_task(void *pvParameters) {
             uint32_t chunk_time_ms = (sample_count * 1000) / 16000;
             if (avg > VAD_AMPLITUDE_THRESHOLD) {
                 silence_duration_ms = 0; 
+                // Neu day la cau dau tien
+                if (!has_started_speaking) {
+                    has_started_speaking = true;
+                    ESP_LOGI(TAG, "Da bat duoc am thanh dau tien");
+                }
             } else {
                 silence_duration_ms += chunk_time_ms; 
             }
+            uint32_t active_timeout = has_started_speaking ? 1200 : 5000;
             // Nếu người dùng im lặng quá 1.5 giây VÀ chưa từng phát lệnh dừng
-            if (silence_duration_ms >= MAX_SILENCE_TIMEOUT && !is_stop_requested) {
-                ESP_LOGI(TAG, "🎙️ VAD: Đã im lặng %lu ms. Tự động đóng luồng!", silence_duration_ms);
+            if (silence_duration_ms >= active_timeout && !is_stop_requested) {
+                if (has_started_speaking) ESP_LOGW(TAG, "Qua thoi gian cho noi, huy stream");
+                else ESP_LOGI(TAG, "Da noi xong (Im lang %lu ms).", silence_duration_ms);
                 
                 // Kích hoạt cơ chế dừng mềm (để vét nốt cái đuôi Hang Time nếu cần)
                 audio_request_stop();
