@@ -38,7 +38,7 @@ static void on_ptt_pressed(void) {
 static void on_ptt_released(void) {
     ESP_LOGI(TAG, "Nút PTT được NHẢ! Dừng thu âm, chờ Server...");
     if (get_app_state() == STATE_STREAM_UP) {
-        audio_start_streaming(false);
+        audio_request_stop();
         
         char topic[80];
         mqtt_proto_get_audio_control_topic(mqtt_get_device_id(), topic, sizeof(topic));

@@ -12,7 +12,7 @@
  * THÔNG SỐ MQTT BROKER
  * ========================================================================= */
 //#define MQTT_BROKER_URI         "mqtt://192.168.0.102:1883" // IP của Server nội bộ
-#define MQTT_BROKER_URI         "mqtt://192.168.0.100:1883" // IP của Server nội bộ
+#define MQTT_BROKER_URI         "mqtt://192.168.0.101:1883" // IP của Server nội bộ
 // #define MQTT_USERNAME        "admin"                    
 // #define MQTT_PASSWORD        "secret"
 #define MQTT_KEEPALIVE_SEC      10                          // Chu kỳ gửi Pingreq

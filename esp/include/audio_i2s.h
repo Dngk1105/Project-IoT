@@ -62,6 +62,8 @@ void audio_i2s_deinit(void);
  */
 void audio_flush_playback(void);
 
+//Xin dung, Module khac goi vao
+void audio_request_stop(void);
 #ifdef __cplusplus
 }
 #endif

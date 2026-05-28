@@ -16,6 +16,8 @@
 static const char *TAG = "AUDIO_I2S";
 
 static volatile bool is_streaming = false;
+static volatile bool is_stop_requested = false;
+static int flush_chunks_remaining = 0;
 static TaskHandle_t audio_stream_task_handle = NULL;
 static TaskHandle_t audio_playback_task_handle = NULL;
 
@@ -109,6 +111,12 @@ void audio_flush_playback(void){
     ESP_LOGI(TAG, "Da xa sach DMA I2S (Zero-fill).");
 }
 
+void audio_request_stop(void) {
+    is_stop_requested = true;
+    // Giả sử mỗi vòng lặp đọc 20ms audio. 
+    // Muốn vét đuôi 400ms thì cần đọc thêm 20 vòng nữa (400/20 = 20)
+    flush_chunks_remaining = 20; 
+}
 
 // Watchdog la giam sat trang thai ung dung
 
@@ -117,6 +125,7 @@ void audio_flush_playback(void){
  *
  * Với data_bit_width=16BIT, driver trả về int16_t trực tiếp.
  * Chỉ cần high-pass filter để cắt DC offset, không cần shift thủ công.
+ * Có thuật toán VAD thay cho watchdog cũ, tự động biết điểm dừng 
  * ========================================================================= */
 static void audio_stream_task(void *pvParameters) {
     static int32_t raw_buf[AUDIO_BUFFER_SIZE / 4];   // đọc frame 32-bit nguyên
@@ -125,6 +134,8 @@ static void audio_stream_task(void *pvParameters) {
     int no_data_count = 0;
     static int32_t dc_x_prev = 0;
     static int32_t dc_y_prev = 0;
+    uint32_t silence_duration_ms = 0; 
+    const uint32_t MAX_SILENCE_TIMEOUT = 1500; // Ngưỡng 1.5 giây im lặng sẽ ngắt
 
     ESP_LOGI(TAG, "Stream Task bắt đầu...");
 
@@ -156,19 +167,56 @@ static void audio_stream_task(void *pvParameters) {
                 pcm_buf[i] = (int16_t)y;
             }
 
+            // Đẩy data lên server
+            char topic[80];
+            mqtt_proto_get_audio_up_topic(mqtt_get_device_id(), topic, sizeof(topic));
+            mqtt_handler_publish(topic, (const char*)pcm_buf, (int)(sample_count * 2), 0, 0);
+
+            // Kiểm tra có yêu cầu dừng
+            if (is_stop_requested) {
+                if (flush_chunks_remaining > 0) {
+                    flush_chunks_remaining--; // Đợi flush nốt dữ liệu, mấy từ cuối
+                } else {
+                    is_streaming = false;
+                    is_stop_requested = false;
+                    
+                    ESP_LOGI(TAG, "Đã vét cạn Buffer. Gửi lệnh ngắt Server.");
+                    
+                    // Bắn lệnh Stop cho Server
+                    char ctrl_topic[80];
+                    mqtt_proto_get_audio_control_topic(mqtt_get_device_id(), ctrl_topic, sizeof(ctrl_topic));
+                    cJSON* data = cJSON_CreateObject();
+                    cJSON_AddStringToObject(data, "state", "stop_stream");
+                    char* payload = mqtt_proto_build_standard_payload(data);
+                    mqtt_handler_publish(ctrl_topic, payload, 0, 1, 0);
+                    free(payload);
+
+                    // Báo hiệu FSM chuyển trạng thái 
+                    //request_app_state(STATE_WAIT_SERVER);
+                }
+            }
+
             int32_t sum = 0;
             for (size_t i = 0; i < sample_count; i++) sum += abs(pcm_buf[i]);
             int avg = (sample_count > 0) ? (int)(sum / sample_count) : 0;
 
-            // VAD: chỉ publish khi có giọng nói thật
+            // Tính thời lượng của chunk hiện tại theo mili-giây
+            // Công thức: (Số mẫu * 1000) / Tần số lấy mẫu (16000)
+            uint32_t chunk_time_ms = (sample_count * 1000) / 16000;
             if (avg > VAD_AMPLITUDE_THRESHOLD) {
-                char topic[80];
-                mqtt_proto_get_audio_up_topic(mqtt_get_device_id(), topic, sizeof(topic));
-                mqtt_handler_publish(topic, (const char*)pcm_buf,
-                                     (int)(sample_count * 2), 0, 0);
-                // ESP_LOGI(TAG, "🎤 %d samples | Amplitude: %d 🔊", sample_count, avg);
+                silence_duration_ms = 0; 
             } else {
-                // ESP_LOGD(TAG, "🎤 quiet | Amplitude: %d", avg);
+                silence_duration_ms += chunk_time_ms; 
+            }
+            // Nếu người dùng im lặng quá 1.5 giây VÀ chưa từng phát lệnh dừng
+            if (silence_duration_ms >= MAX_SILENCE_TIMEOUT && !is_stop_requested) {
+                ESP_LOGI(TAG, "🎙️ VAD: Đã im lặng %lu ms. Tự động đóng luồng!", silence_duration_ms);
+                
+                // Kích hoạt cơ chế dừng mềm (để vét nốt cái đuôi Hang Time nếu cần)
+                audio_request_stop();
+                
+                // Reset lại để tránh gọi kích hoạt liên tục trong các vòng lặp tiếp theo
+                silence_duration_ms = 0; 
             }
 
         } else {
