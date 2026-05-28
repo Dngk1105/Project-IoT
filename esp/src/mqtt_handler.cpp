@@ -355,7 +355,7 @@ void mqtt_handler_start(void) {
 /* =========================================================================
  * HÀM PUBLISH
  * ========================================================================= */
-int mqtt_handler_publish(const char *topic, const char* payload, int len, int qos, int retain) {
+int mqtt_handler_publish(const char *topic, const char* payload, int len, int qos, int retain, int noti = 1) {
     if (!mqtt_is_connected()) {
         ESP_LOGW(TAG, "Bỏ qua Publish: MQTT đang mất kết nối. Topic: %s", topic);
         return -1;
@@ -375,7 +375,7 @@ int mqtt_handler_publish(const char *topic, const char* payload, int len, int qo
     if (msg_id < 0) {
         ESP_LOGE(TAG, "Gửi tin nhắn thất bại lên topic: %s", topic);
     } else {
-        ESP_LOGI(TAG, "Đã gửi tin nhắn thành công, msg_id=%d, Topic=%s", msg_id, topic);
+        if (noti) ESP_LOGI(TAG, "Đã gửi tin nhắn thành công, msg_id=%d, Topic=%s", msg_id, topic);
     }
 
     return msg_id;

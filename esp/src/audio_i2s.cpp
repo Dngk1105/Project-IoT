@@ -173,7 +173,7 @@ static void audio_stream_task(void *pvParameters) {
             // Đẩy data lên server
             char topic[80];
             mqtt_proto_get_audio_up_topic(mqtt_get_device_id(), topic, sizeof(topic));
-            mqtt_handler_publish(topic, (const char*)pcm_buf, (int)(sample_count * 2), 0, 0);
+            mqtt_handler_publish(topic, (const char*)pcm_buf, (int)(sample_count * 2), 0, 0, 0);
 
             // Kiểm tra có yêu cầu dừng
             if (is_stop_requested) {
@@ -199,6 +199,7 @@ static void audio_stream_task(void *pvParameters) {
                 }
             }
 
+            // Âm lượng trung bình 
             int32_t sum = 0;
             for (size_t i = 0; i < sample_count; i++) sum += abs(pcm_buf[i]);
             int avg = (sample_count > 0) ? (int)(sum / sample_count) : 0;

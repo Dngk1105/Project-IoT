@@ -18,7 +18,7 @@ void mqtt_handler_start(void);
  * PUBLISH & SUBSCRIBE
  * ========================================================================= */
 int mqtt_handler_publish(const char *topic, const char* payload, 
-                        int len, int qos, int retain);
+                        int len, int qos, int retain, int noti = 1);
 
 int mqtt_handler_subscribe(const char *topic, int qos);
 
