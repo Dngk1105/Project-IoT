@@ -8,21 +8,15 @@ logger = logging.getLogger(__name__)
 
 class STTClient:
     def __init__(self):
-        # Chọn size model: "tiny", "base", "small", "medium", "large-v3"
-        # "small" hoặc "base" là điểm cân bằng tuyệt vời nhất giữa Tốc độ và Độ chính xác cho Tiếng Việt.
         self.model_size = "large-v3"
-        
-        # device="cuda" (nếu có card NVIDIA) hoặc "cpu"
-        # compute_type="float16" (GPU) hoặc "int8" (CPU để giảm nửa RAM)
-        self.device = "cpu" 
-        self.compute_type = "int8" 
+        self.device = "cuda" 
+        self.compute_type = "float32" 
         
         logger.info(f"Đang tải Whisper ({self.model_size}) vào RAM...")
         self.model = WhisperModel(self.model_size, device=self.device, compute_type=self.compute_type)
         logger.info("Tải mô hình STT Local hoàn tất!")
 
     def _pcm_to_wav(self, pcm_data: bytes, sample_rate: int = 16000) -> io.BytesIO:
-        """Đóng gói PCM thô thành định dạng WAV chuẩn ngay trên RAM"""
         wav_io = io.BytesIO()
         with wave.open(wav_io, 'wb') as wav_file:
             wav_file.setnchannels(1)      
@@ -35,7 +29,6 @@ class STTClient:
 
     def _run_whisper_sync(self, wav_io: io.BytesIO) -> str:
         """Hàm chạy đồng bộ (blocking) bọc lõi của Faster-Whisper"""
-        # Tham số beam_size=5 giúp AI cân nhắc nhiều cụm từ để cho ra câu chuẩn ngữ pháp nhất
         segments, info = self.model.transcribe(
             wav_io, 
             language="vi", 
@@ -49,12 +42,12 @@ class STTClient:
 
     async def transcribe(self, raw_pcm_data: bytes) -> str:
         try:
-            logger.info(f"Đang bọc {len(raw_pcm_data)} bytes PCM thành WAV...")
+            logger.info(f"Chuyển đổi {len(raw_pcm_data)} bytes PCM->WAV...")
             wav_io = self._pcm_to_wav(raw_pcm_data)
             
-            logger.info("Đang vắt óc nhận diện giọng nói (Local)...")
+            logger.info("Đang nhận diện giọng nói...")
             
-            # Đẩy tác vụ STT sang một Thread (luồng) khác để không khóa (block) Server
+            # Tạo luồng để xử lí, tránh block server
             user_text = await asyncio.to_thread(self._run_whisper_sync, wav_io)
             
             return user_text

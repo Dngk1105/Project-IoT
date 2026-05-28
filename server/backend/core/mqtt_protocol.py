@@ -29,7 +29,7 @@ class MqttTopics:
 
 
 class PayloadBuilder:
-    """Lớp đóng gói dữ liệu thành Phong bì (Envelope) chuẩn hóa"""
+    """Lớp đóng gói dữ liệu"""
     
     @staticmethod
     def build_json(data: Dict[str, Any], version: str = "1.0") -> dict:

@@ -44,14 +44,12 @@ class AudioEngineService:
             return
         
         try:
-            logger.info(f"[{device_id}] Bắt đầu bóc tách luồng thoại với {len(audio_data)} bytes...")
+            logger.info(f"[{device_id}] Bắt đầu Xử lí luồng thoại {len(audio_data)} bytes...")
             
             # Gọi Whisper Speech-to-Text Local xử lý
             user_text = await stt_api.transcribe(audio_data)
-
-            logger.info(f"==================================================")
-            logger.info(f"WHISPER LOCAL dịch là: '{user_text}'")
-            logger.info(f"==================================================")
+            logger.info("Whisper nhan dien giong noi thanh van ban:")
+            logger.info(user_text);
         except Exception as e:
             logger.error(f"Lỗi Pipeline AI: {e}")
 
