@@ -29,7 +29,7 @@ class CalendarEvent(Base):
     #Thoi gian 
     start_time: Mapped[datetime] = mapped_column(DateTime(timezone = True))
     end_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    tz_info: Mapped[str] = mapped_column(String(50), default="Asia/Ha_Noi")     
+    tz_info: Mapped[str] = mapped_column(String(50), default="Asia/Ho_Chi_Minh")     
     
     #Lap lai
     is_recurring: Mapped[bool] = mapped_column(Boolean, default=False)

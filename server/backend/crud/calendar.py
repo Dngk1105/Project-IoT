@@ -1,6 +1,6 @@
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from models.calendar import CalendarEvent, EventSource
@@ -51,7 +51,7 @@ async def create_event(db: AsyncSession, event_in: CalendarEventCreate) -> Calen
         logger.info(f"Da them su kien: {db_event.summary} [{db_event.id}]")
         return db_event
     except Exception as e:
-        db.rollback()
+        await db.rollback()
         logger.error (f"Loi khi luu vao DB: {str(e)}")
         raise e
         

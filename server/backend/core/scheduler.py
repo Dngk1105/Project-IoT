@@ -19,7 +19,7 @@ from services.crawlers.google_pipeline import run_google_sync_pipeline
 
 logger = get_logger("scheduler", log_file="scheduler.log")
 
-scheduler = AsyncIOScheduler(timezone="Asia/Ha_Noi")
+scheduler = AsyncIOScheduler(timezone="Asia/Ho_Chi_Minh")
 
 async def fetch_full_calendar_for_web() -> list:
     """
