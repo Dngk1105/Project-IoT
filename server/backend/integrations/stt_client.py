@@ -1,26 +1,28 @@
 import io
-import wave
+import numpy as np
 import logging
 import asyncio
 import gc #garbage 
 import torch
-from faster_whisper import WhisperModel
+from transformers import pipeline, Pipeline
 
 logger = logging.getLogger(__name__)
 
 class STTClient:
     def __init__(self, idle_timeout: int = 300):
-        self.model_size = "large-v3"
-        self.device = "cuda" 
-        self.compute_type = "float16"
+        self.model_name = "vinai/PhoWhisper-large"
+        self.device = 0 if torch.cuda.is_available() else -1 
+        self.torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32        
         self.model = None
+        
         self.idle_timeout = idle_timeout
         self.idle_timer = None
+        
         self.lock = asyncio.Lock() #giong mutex, tranh' xung dot load/unload model cung luc
         
         logger.info("Dang khoi tao STT...")
         
-    async def _get_model(self) -> WhisperModel:
+    async def _get_model(self) -> Pipeline:
         """Neu idle thi tu dong bat lai"""
         #async with: acquire() lock xong roi release() no luon
         async with self.lock:
@@ -30,11 +32,12 @@ class STTClient:
                 self.idle_timer = None
             
             if self.model is None:
-                logger.info(f"Đang tải Whisper ({self.model_size}) vào VRAM/RAM...")
-                self.model = WhisperModel(
-                    self.model_size,
-                    device=self.device,
-                    compute_type=self.compute_type
+                logger.info(f"Đang tải PhoWhisper ({self.model_name}) vào VRAM/RAM...")
+                self.model = pipeline(
+                    "automatic-speech-recognition",
+                    model= self.model_name,
+                    device= self.device,
+                    torch_dtype = self.torch_dtype,
                 )
                 logger.info("Tai STT thanh cong")
             return self.model
@@ -62,50 +65,47 @@ class STTClient:
                 
                 # Ép Python và CUDA dọn dẹp bộ nhớ ngay lập tức
                 gc.collect()
+                
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
                 logger.info("Da giai phong VRAM")
 
-    def _pcm_to_wav(self, pcm_data: bytes, sample_rate: int = 16000) -> io.BytesIO:
-        wav_io = io.BytesIO()
-        with wave.open(wav_io, 'wb') as wav_file:
-            wav_file.setnchannels(1)      
-            wav_file.setsampwidth(2)      
-            wav_file.setframerate(sample_rate)
-            wav_file.writeframes(pcm_data)
-        
-        wav_io.seek(0)
-        return wav_io
+    def _pcm_to_float32_array(self, pcm_data: bytes) -> np.ndarray:
+        """Chuyen truc tiep pcm 16bit sang float32 [-1,1]
+            pcm16 bit -> int -> float -> chuan hoa 
+        """
+        audio_arr = np.frombuffer(pcm_data, dtype= np.int16)
+        audio_float32 = audio_arr.astype(np.float32) / 32768.0
+        return audio_float32
 
-    def _run_whisper_sync(self, model: WhisperModel, wav_io: io.BytesIO) -> str:
+    def _run_whisper_sync(self, model: Pipeline, audio_input: np.ndarray) -> str:
         """Hàm chạy đồng bộ (blocking) bọc lõi của Faster-Whisper"""
-        segments, info = self.model.transcribe(
-            wav_io, 
-            language="vi", 
-            beam_size=10,
-            best_of=5,
-            vad_filter=True,
-            temperature=[0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+        result = model(
+            {
+            "sampling_rate": 16000,
+            "raw": audio_input
+        },
+        generate_kwargs={
+            "language": "vi",
+            "task": "transcribe"
+            }
         )
         
-        # Gom các đoạn văn bản (segment) lại thành một câu hoàn chỉnh
-        text = "".join([segment.text for segment in segments])
-        return text.strip()
+        return result["text"].strip()
 
     async def transcribe(self, raw_pcm_data: bytes) -> str:
         try:
             model = await self._get_model()
             
-            logger.info(f"Chuyển đổi {len(raw_pcm_data)} bytes PCM->WAV...")
-            wav_io = self._pcm_to_wav(raw_pcm_data)
+            logger.info(f"Chuyển đổi {len(raw_pcm_data)} bytes...")
+            audio_input = self._pcm_to_float32_array(raw_pcm_data)
             
             logger.info("Đang nhận diện giọng nói...")
-            
             # Tạo luồng để xử lí, tránh block server
-            user_text = await asyncio.to_thread(self._run_whisper_sync, model, wav_io)
+            user_text = await asyncio.to_thread(self._run_whisper_sync, model, audio_input)
             
             self._reset_idle_timer() #reset timer
-            
+
             return user_text
         except Exception as e:
             logger.error(f"Lỗi Whisper Local: {e}")
