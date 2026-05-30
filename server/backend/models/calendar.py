@@ -12,6 +12,7 @@ class EventSource(str, enum.Enum):
     GOOGLE = "google"
     HUST_CTT = "hust_ctt"
     VOICE_AI = "voice_ai"
+    LOCAL = "local"
     
 class CalendarEvent(Base):
     """Bang luu tru cho su kien lich (calendar_events)"""
@@ -33,6 +34,9 @@ class CalendarEvent(Base):
     #Lap lai
     is_recurring: Mapped[bool] = mapped_column(Boolean, default=False)
     rrule: Mapped[Optional[str]] = mapped_column(String(255))
+    
+    #Lich nguoi dung xoa (van luu trong DB)
+    is_canceled: Mapped[bool] = mapped_column(Boolean, default=False)
     
     #func.now() lay thoi gian hien tai
     #onupdate() cap nhat thoi gian neu ban ghi bi chinh sua

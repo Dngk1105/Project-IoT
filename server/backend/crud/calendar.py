@@ -9,15 +9,45 @@ from core.logger import get_logger
 
 logger = get_logger("crud_calendar", log_file="database.log")
 
+async def check_collision(db: AsyncSession, start_dt: datetime, end_dt: datetime) -> List[CalendarEvent]:
+    """Tim cac event dang co lich trung voi nhau"""
+    try:
+        stmt = select(CalendarEvent).where(
+            CalendarEvent.is_cancelled == False,
+            CalendarEvent.start_time < end_dt, 
+            CalendarEvent.end_time > start_dt
+        )
+        result = await db.execute(stmt)
+        return list(result.scalars().all())
+    except Exception as e:
+        logger.error(f"Loi check trung lich: {str(e)}")
+        return []
+
 async def create_event(db: AsyncSession, event_in: CalendarEventCreate) -> CalendarEvent:
     """Chuyen schema -> model va luu vao database"""
     try:
+        #Kiem tra co phai dang tao mot su kien da bi soft delete
+        stmt = select(CalendarEvent).where(
+            CalendarEvent.summary == event_in.summary,
+            CalendarEvent.start_time == event_in.start_time,
+            CalendarEvent.is_cancelled == True
+        )
+        ghost = await db.execute(stmt)
+        if ghost.scalars().first():
+            logger.info(f"Su kien '{event_in.summary}' da bi xoa mem tu truoc, tu choi nap lai.")
+            return None # Bỏ qua, không tạo mới 
+        
+        #Check xung dot, ghi log chua lam gi
+        collisions = await check_collision(db, event_in.start_time, event_in.end_time)
+        if collisions:
+            logger.warning(f"Phat hien trung {len(collisions)} lich cho su kien: {event_in.summary}")
+        
         # Ép kiểu dữ liệu từ Pydantic Schema sang SQLAlchemy Model bằng model_dump()
         db_event = CalendarEvent(**event_in.model_dump())
         db.add(db_event)
-        
         await db.commit()          # Lưu thay đổi xuống ổ cứng
         await db.refresh(db_event) # Nạp lại ID và created_at vừa được DB tự sinh ra
+        
         logger.info(f"Da them su kien: {db_event.summary} [{db_event.id}]")
         return db_event
     except Exception as e:
@@ -43,6 +73,7 @@ async def get_events_in_range(db: AsyncSession, start_dt: datetime, end_dt: date
     """Truy vấn các sự kiện nằm trong khoảng thời gian nhất định"""
     try:
         stmt = select(CalendarEvent).where(
+            CalendarEvent.is_canceled == False,
             CalendarEvent.start_time >= start_dt,
             CalendarEvent.start_time <= end_dt
         )
@@ -76,19 +107,20 @@ async def update_event(db: AsyncSession, event_id: str, event_in: CalendarEventU
         raise e
     
 async def delete_event(db: AsyncSession, event_id: str) -> bool:
+    """Chi set is_canceled = True"""
     db_event = await get_event(db, event_id)
     if not db_event:
         logger.warning(f"Khong tim thay su kien de xoa: {event_id}")
         return False
     
     try:
-        await db.delete(db_event)
+        db_event.is_cancelled = True
         await db.commit()
-        logger.info(f"Da xoa su kien: {event_id}")
+        logger.info(f"Da xoa (soft) su kien: {event_id}")
         return True
     except Exception as e:
         await db.rollback()
-        logger.error(f"Loi khi Delete DB: {str(e)}")
+        logger.error(f"Loi khi Soft-Delete DB: {str(e)}")
         raise e
     
 async def clear_future_events_by_source(db: AsyncSession, source: EventSource):
@@ -97,7 +129,8 @@ async def clear_future_events_by_source(db: AsyncSession, source: EventSource):
     try:
         stmt = delete(CalendarEvent).where(
             CalendarEvent.source == source,
-            CalendarEvent.end_time >= now
+            CalendarEvent.end_time >= now,
+            CalendarEvent.is_cancelled == False #Du lai su kien da bi xoa de tranh cao lai
         )
         
         result = await db.execute(stmt)
