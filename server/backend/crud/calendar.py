@@ -73,7 +73,7 @@ async def get_events_in_range(db: AsyncSession, start_dt: datetime, end_dt: date
     """Truy vấn các sự kiện nằm trong khoảng thời gian nhất định"""
     try:
         stmt = select(CalendarEvent).where(
-            CalendarEvent.is_canceled == False,
+            CalendarEvent.is_cancelled == False,
             CalendarEvent.start_time >= start_dt,
             CalendarEvent.start_time <= end_dt
         )
@@ -107,7 +107,7 @@ async def update_event(db: AsyncSession, event_id: str, event_in: CalendarEventU
         raise e
     
 async def delete_event(db: AsyncSession, event_id: str) -> bool:
-    """Chi set is_canceled = True"""
+    """Chi set is_cancelled = True"""
     db_event = await get_event(db, event_id)
     if not db_event:
         logger.warning(f"Khong tim thay su kien de xoa: {event_id}")

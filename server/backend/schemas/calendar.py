@@ -12,7 +12,7 @@ class CalendarEventBase(BaseModel):
     end_time: datetime
     is_recurring: bool = False
     rrule: Optional[str] = Field(None, description="Luật lặp lại (ví dụ: FREQ=WEEKLY)")
-    is_canceled: bool = False
+    is_cancelled: bool = False
     
 class CalendarEventCreate(CalendarEventBase):
     source: EventSource = EventSource.VOICE_AI

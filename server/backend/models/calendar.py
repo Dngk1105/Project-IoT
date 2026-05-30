@@ -36,7 +36,7 @@ class CalendarEvent(Base):
     rrule: Mapped[Optional[str]] = mapped_column(String(255))
     
     #Lich nguoi dung xoa (van luu trong DB)
-    is_canceled: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_cancelled: Mapped[bool] = mapped_column(Boolean, default=False)
     
     #func.now() lay thoi gian hien tai
     #onupdate() cap nhat thoi gian neu ban ghi bi chinh sua
