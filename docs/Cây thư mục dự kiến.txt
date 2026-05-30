@@ -1,81 +1,67 @@
-IoT-project/                     # Thư mục gốc dự án
+IoT-project/
 │
-├── .gitignore                   
-├── README.md                    
-├── MASTER_DOCS.md               # Tài liệu đặc tả kiến trúc (Bản đang đọc)
-│
-├── docs/                        
-│   ├── git_workflow.md          
-│   ├── mqtt_topic_tree.md       
-│   ├── database_schema.png      
-│   └── hardware_wiring.pdf      
-│
-├── esp/                         # KHU VỰC EDGE (PlatformIO + ESP-IDF)
+├── docs/                        # Tài liệu hệ thống
+├── esp/                         # KHU VỰC EDGE (C/C++ ESP-IDF)
 │   ├── platformio.ini           
-│   ├── partitions_16MB.csv      
-│   ├── sdkconfig.defaults       
-│   ├── data/                    
-│   ├── include/                 
-│   │   ├── config.h             
-│   │   ├── mqtt_handler.h       
-│   │   ├── audio_i2s.h          
-│   │   ├── wake_word.h          
-│   │   ├── local_storage.h      # Đọc/ghi file JSON lịch trình vào LittleFS
-│   │   ├── device_shadow.h      # Thu thập trạng thái ngoại vi
-│   │   └── telemetry.h          # Khai báo đọc RAM, RSSI và thông số Mic (Audio Heard)
-│   │   ├── time_core.h          # Đồng bộ NTP, quản lý RTC, sinh UNIX Timestamp
-│   │   └── peripherals.h        # Quản lí ngoại vi (nếu cần)
-│   │
-│   └── src/                     
-│       ├── CMakeLists.txt       
-│       ├── main.cpp             
-│       ├── mqtt_handler.cpp     
-│       ├── audio_i2s.cpp        
-│       ├── wake_word.cpp        
-│       ├── local_storage.cpp    # Quản lý lịch cục bộ, kích hoạt chuông offline
-│       ├── device_shadow.cpp    # Bắn trạng thái phần cứng lên Server
-│       └── telemetry.cpp        # Định kỳ đóng gói tài nguyên hệ thống + chỉ số mic gửi lên
-│       ├── time_core.cpp        # Chạy task đồng bộ giờ ngầm, giữ nhịp thời gian
-│       └── peripherals.cpp      # Driver cấp thấp (VD: bật PWM cho còi, nháy LED RGB)
+│   ├── include/                 # (Giữ nguyên các file header)
+│   └── src/                     # (Giữ nguyên các file code chức năng)
 │
-└── server/                      # KHU VỰC SERVER (Broker + API + Web)
-    ├── infrastructure/          
-    │   ├── docker-compose.yml   
-    │   └── mosquitto/
-    │       ├── config/mosquitto.conf 
-    │       ├── data/            
-    │       └── log/             
+└── server/                      # KHU VỰC SERVER
+    ├── infrastructure/          # Chứa docker-compose và cấu hình mosquitto broker
+    ├── frontend/                # Web theo dõi (Dashboard HTML/JS/CSS)
     │
-    ├── backend/                 # API Server (FastAPI)
-    │   ├── .env                 
-    │   ├── requirements.txt     
-    │   ├── main.py              
-    │   ├── core/                      
-    │   │   ├── config.py        
-    │   │   ├── mqtt_client.py   # Bắt sự kiện LWT, thiết lập cấu hình MQTT v5
-    │   │   └── scheduler.py     # Quét lịch, nén và tính expiry interval đẩy xuống
-    │   ├── api/                 
-    │   │   ├── device_routes.py 
-    │   │   └── schedule_routes.py
-    │   ├── services/            
-    │   │   ├── audio_engine.py  # Xử lý luồng stream âm thanh, kết nối STT/TTS
-    │   │   ├── llm_agent.py     # Gọi LLM, bóc tách thực thể sang JSON qua Pydantic
-    │   │   ├── device_manager.py# Xử lý dữ liệu Shadow & Nhật ký Telemetry
-    │   │   └── crawlers/        
-    │   │       ├── hust_sis.py  
-    │   │       └── english_center.py 
-    │   ├── models/              
-    │   │   ├── db_models.py     # Định nghĩa các bảng Database (Schedules, Devices, Telemetry_Logs)
-    │   │   └── schemas.py       # Pydantic Schemas để validate dữ liệu từ Web và từ LLM Agent
-    │   └── database/
-    │       └── session.py       
-    │
-    └── frontend/                # GIAO DIỆN WEB TĨNH (AdminLTE / Tabler)
-        ├── index.html           # Màn hình Dashboard theo dõi tổng quan
-        ├── devices.html         # Quản lý thiết bị ngoại vi và xem biểu đồ Telemetry
-        ├── calendar.html        # Khung đồ thị thời gian biểu FullCalendar
-        └── assets/
-            ├── css/style.css    
-            └── js/
-                ├── app.js       
-                └── mqtt_ws.js   # Đổ dữ liệu realtime từ cổng 9001 lên màn hình giám sát
+    └── backend/                 # API SERVER (FastAPI)
+        ├── .env
+        ├── requirements.txt
+        ├── main.py              # File khởi chạy Server chính
+        ├── iot_calendar.db      # Database SQLite chính
+        ├── qldt_raw_data.json   # Nơi dump data thô để debug
+        │
+        ├── logs/                # THƯ MỤC CHỨA LOG
+        │   └── qldt_sync.log    # Lưu vết quá trình renew session, cào và parse dữ liệu
+        │
+        ├── core/                # HẠ TẦNG CỐT LÕI
+        │   ├── config.py
+        │   ├── database.py      # Cấu hình engine, kết nối SQLite
+        │   ├── logger.py        # Khởi tạo custom Logger (Ghi ra file + Console)
+        │   ├── mqtt_client.py   
+        │   ├── mqtt_protocol.py 
+        │   └── prompts/         # Lưu System Prompts cho AI
+        │
+        ├── api/                 # CỔNG ĐIỀU HƯỚNG ROUTER
+        │   ├── schedule_routes.py
+        │   ├── device_routes.py
+        │   └── test_routes.py
+        │
+        ├── models/              # ĐỊNH NGHĨA BẢNG CSDL (SQLAlchemy)
+        │   ├── __init__.py
+        │   ├── calendar.py      # Bảng CalendarEvent (Lưu lịch học, lịch thi, nhắc nhở)
+        │   ├── device.py        # Bảng DeviceRegistry (Quản lý MAC, phiên bản firmware MCU)
+        │   └── telemetry.py     # Bảng TelemetryLog (Lưu trạng thái pin, cảm biến, crash log)
+        │
+        ├── schemas/             # KHUÔN ĐÚC DỮ LIỆU (Pydantic)
+        │   ├── __init__.py
+        │   ├── calendar.py      # Schema xác thực Lịch
+        │   ├── device.py        # Schema xác thực khai báo Thiết bị
+        │   └── telemetry.py     # Schema xác thực gói tin MQTT gửi lên
+        │
+        ├── crud/                # GIAO TIẾP DB (Insert/Update/Delete)
+        │   ├── __init__.py
+        │   ├── calendar.py      
+        │   ├── device.py        
+        │   └── telemetry.py     
+        │
+        ├── integrations/        # KẾT NỐI API BÊN THỨ 3
+        │   ├── llm_client.py    
+        │   ├── stt_client.py    
+        │   └── tts_client.py    
+        │
+        └── services/            # LOGIC NGHIỆP VỤ (Background Tasks)
+            ├── ack_manager.py
+            ├── audio_engine.py
+            ├── device_manager.py 
+            ├── event_processor.py
+            │
+            └── crawlers/        # TÁI CẤU TRÚC HỢP NHẤT
+                ├── qldt_pipeline.py       # Đường ống 1 chiều: Check State -> Crawl -> Parse -> DB
+                └── hust_qldt_state.json   # Thẻ bài Session

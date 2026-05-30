@@ -91,8 +91,8 @@ async def delete_event(db: AsyncSession, event_id: str) -> bool:
         logger.error(f"Loi khi Delete DB: {str(e)}")
         raise e
     
-#bulk delete theo source
 async def clear_future_events_by_source(db: AsyncSession, source: EventSource):
+    """#bulk delete theo source"""
     now = datetime.now()
     try:
         stmt = delete(CalendarEvent).where(
