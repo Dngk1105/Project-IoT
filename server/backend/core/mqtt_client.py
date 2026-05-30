@@ -5,13 +5,6 @@ import json
 import logging
 import time
 
-
-#Services xu li tiopic gui tu esp
-from services.device_manager import device_manager_service
-from services.event_processor import event_processor_service
-from services.audio_engine import audio_engine_service
-from services.ack_manager import ack_manager_service
-
 logger = logging.getLogger(__name__) #ghi log
 
 mqtt_config = MQTTConfig(
@@ -25,25 +18,6 @@ mqtt_config = MQTTConfig(
 
 fast_mqtt = FastMQTT(config=mqtt_config)
 
-"""Anh xa cac category theo dung services xu li cua no"""
-MQTT_SERVICE_ROUTER: Dict[str, Callable] = {
-    
-    #Service do DeviceMangager quan li
-    "status": device_manager_service.process_lifecycle_status,
-    "telemetry": device_manager_service.process_hardware_telemetry,
-    "shadow": device_manager_service.process_device_shadow,
-    
-    #EnventProcessor
-    "events": event_processor_service.process_event,
-    
-    #AudioEngine
-    "audio": audio_engine_service.handle_stream,
-    
-    #AcKManager
-    "ack": ack_manager_service.process_ack
-    
-    # Muon them thi them o day
-}
 
 """Phân rã chuỗi quy chuẩn: iot_schedule/<device_id>/<category>/<action>"""
 def parse_topic (topic: str):
@@ -89,7 +63,20 @@ async def on_message(client: MQTTClient, topic: str, payload: bytes, qos: int, p
     if category == "commands" or action == "stream_down":
         return
     
-    target_service = MQTT_SERVICE_ROUTER.get(category)
+    target_service = None
+    if category == "status" or category == "telemetry" or category == "shadow":
+        from services.device_manager import device_manager_service
+        target_service = getattr(device_manager_service, f"process_{category}" if category == "shadow" else f"process_lifecycle_status" if category == "status" else "process_hardware_telemetry")
+    elif category == "events":
+        from services.event_processor import event_processor_service
+        target_service = event_processor_service.process_event
+    elif category == "audio":
+        from services.audio_engine import audio_engine_service
+        target_service = audio_engine_service.handle_stream
+    elif category == "ack":
+        from services.ack_manager import ack_manager_service
+        target_service = ack_manager_service.process_ack
+
     if not target_service:
         logger.warning(f"Category khong co trong danh muc co the xu li: {category}")
         return

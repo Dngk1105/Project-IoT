@@ -26,6 +26,11 @@ class MqttTopics:
     def telemetry_pong(device_id: str) -> str:
         """Trả lời nhịp tim (Pong) cho ESP32"""
         return f"{PROJECT_PREFIX}/{device_id}/telemetry/pong"
+    
+    @staticmethod
+    def calendar_sync_frontend() -> str:
+        """Dong bo lich voi WebDashboard"""
+        return f"{PROJECT_PREFIX}/frontend/calendar/sync"
 
 
 class PayloadBuilder:

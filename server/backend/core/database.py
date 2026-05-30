@@ -1,7 +1,12 @@
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import sessionmaker
-from models.calendar import Base
+from models.calendar import CalendarEvent
+from models.device import Device
+from models.telemetry import Telemetry
+from models.shadow import DeviceEventShadow
+from models.base import Base
 
+ 
 SQLALCHEMY_DATABASE_URL = "sqlite+aiosqlite:///./iot_calendar.db"
 
 engine = create_async_engine(
