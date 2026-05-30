@@ -16,6 +16,12 @@ class CalendarEventBase(BaseModel):
 class CalendarEventCreate(CalendarEventBase):
     source: EventSource = EventSource.VOICE_AI
     
+class CalendarEventUpdate(CalendarEventBase):
+    """Update khong nhat thiet phai gui het du lieu"""
+    summary: Optional[str] = None
+    start_time: Optional[datetime] = None 
+    end_time: Optional[datetime] = None
+
 class CalendarEventResponse(CalendarEventBase):
     id: str
     source: EventSource
