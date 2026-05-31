@@ -68,6 +68,9 @@ void audio_flush_playback(void);
 void audio_request_stop(void);
 
 
+bool audio_is_finished(void);
+void audio_set_finished(bool value);
+
 extern void audio_test_beep_task(void *pvParameters);
 #ifdef __cplusplus
 }

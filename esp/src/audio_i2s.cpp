@@ -167,7 +167,7 @@ static void audio_stream_task(void *pvParameters) {
         }
 
         esp_err_t ret = i2s_channel_read(rx_handle, raw_buf, sizeof(raw_buf),
-                                         &bytes_read, pdMS_TO_TICKS(300));
+                                        &bytes_read, pdMS_TO_TICKS(300));
 
         if (ret == ESP_OK && bytes_read > 0) {
             no_data_count = 0;
@@ -447,3 +447,14 @@ void audio_i2s_deinit(void) {
     ESP_LOGI(TAG, "I2S deinit hoàn tất.");
 }
 
+
+bool audio_is_finished(void) {
+    return is_playback_finished;
+}
+
+void audio_set_finished(bool value) {
+    is_playback_finished = value;
+    if (value == false){
+        psram_write_pos = 0;
+    }
+}
