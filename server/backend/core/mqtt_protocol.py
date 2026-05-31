@@ -35,6 +35,12 @@ class MqttTopics:
     def calendar_sync_frontend() -> str:
         """Dong bo lich voi WebDashboard"""
         return f"{PROJECT_PREFIX}/frontend/calendar/sync"
+    
+    @staticmethod
+    def ack(device_id: str, action: str) -> str:
+        """ack co action can doi de phan hoi"""
+        return f"{PROJECT_PREFIX}/{device_id}/ack/{action}"
+        
 
 
 class PayloadBuilder:

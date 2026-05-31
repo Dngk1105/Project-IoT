@@ -15,6 +15,7 @@ from schemas.calendar import CalendarEventResponse
 from services.delta_sync import delta_sync_service
 from services.crawlers.hust_qldt_pipeline import run_sync_pipeline
 from services.crawlers.google_pipeline import run_google_sync_pipeline
+from services.ack_manager import PENDING_ACKS
 
 
 logger = get_logger("scheduler", log_file="scheduler.log")
@@ -64,8 +65,11 @@ async def sync_and_broadcast_calendar():
         if delta_data["add"] or delta_data["upd"] or delta_data["del"]:
             # Cau truc Topic theo chuan MQTT v5 
             esp32_topic = MqttTopics.command(target_device, "sync_schedule")
-            ack_topic = f"{PROJECT_PREFIX}/{target_device}/ack/sync_response"
+            ack_topic = MqttTopics.ack(device_id=target_device, action="sync_response")
             correlation_id = f"sync_{uuid.uuid4().hex[:8]}"
+
+            pending_ids = [ev["id"] for ev in delta_data["add"]] + [ev["id"] for ev in delta_data["upd"]]
+            PENDING_ACKS[correlation_id] = pending_ids
 
             esp32_payload = PayloadBuilder.build_json(data=delta_data)
             

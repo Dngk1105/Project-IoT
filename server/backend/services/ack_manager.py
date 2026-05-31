@@ -3,28 +3,34 @@ from core.logger import get_logger
 from core.database import AsyncSessionLocal
 from models.shadow import DeviceEventShadow
 
-logger = get_logger(__name__)
+logger = get_logger(__name__, "ack_manager.log")
+
+#Luu correlation id -> event id
+PENDING_ACKS = {}
+
 
 class AckManagerService:
     def __init__(self):
         pass
 
     async def process_ack(self, device_id: str, action: str, payload: dict, publish_cb: Callable):
-        msg_id = payload.get("msg_id")
-        data: dict = payload.get("data", {})
-        status = data.get("status", "")
+        # {"status": "success", "correlation_id": "..."}
+        status = payload.get("status", "").lower()
+        correlation_id = payload.get("correlation_id", "")
         
         if action == "sync_response":
-            if status == "SUCCESS":
-                # Ví dụ payload data: {"status": "SUCCESS", "synced_ids": ["uuid-1", "uuid-2"]}
-                synced_ids = data.get("synced_ids", [])
-                logger.info(f"[{device_id}] Đã ghi Lịch học thành công vào Flash! (msg_id: {msg_id})")
+            if status == "success":
+                logger.info(f"[{device_id}] Ghi tkb thanh cong vao Flash (Correlation: {correlation_id})")
                 
-                if synced_ids: 
+                synced_ids = PENDING_ACKS.pop(correlation_id, [])
+                
+                if synced_ids:
                     await self._update_shadow_db(device_id, synced_ids)
+                else:
+                    logger.warning(f"[{device_id}] nhan ACK nhung khong thay Correlation ID {correlation_id} trong cache")
             else:
-                error_reason = data.get("reason", "UNKNOWN_ERR")
-                logger.error(f"[{device_id}] Lỗi khi ghi Lịch học vào Flash! (msg_id: {msg_id} | Lý do: {error_reason})")
+                error_reason = payload.get("reason", "UNKNOWN_ERR")
+                logger.error(f"[{device_id}] Lỗi khi ghi Lịch học vào Flash! | Lý do: {error_reason}")
         else:
             logger.info(f"Nhận ACK từ [{device_id}] cho tác vụ {action}: {payload}")
             
