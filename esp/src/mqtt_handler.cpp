@@ -7,6 +7,7 @@
 #include "esp_mac.h"
 #include "wifi_core.h"
 #include "mqtt_protocol.h"
+#include "local_storage.h"
 #include <string.h>
 #include <stdio.h>
 #include "cJSON.h"
@@ -80,13 +81,17 @@ static void parse_json_envelope(const char *payload, mqtt_msg_type_t msg_type, c
     if (data != NULL && cJSON_IsObject(data)){
         if (msg_type == MSG_TYPE_SYNC_SCHEDULE){
             ESP_LOGI(TAG, "Dong bo lich hoc, chuyen tiep qua local_storage...");
-            // TODO (Phase tiep theo):
-            // bool success = local_storage_save_schedule(data, corr_data);
+            bool success = local_storage_sync_schedule(data);
 
             
             if (resp_topic != NULL && strlen(resp_topic) > 0){
                 cJSON *ack_payload = cJSON_CreateObject();
-                cJSON_AddStringToObject(ack_payload, "status", "success");
+                if (success){
+                    cJSON_AddStringToObject(ack_payload, "status", "success");
+                } else{
+                    cJSON_AddStringToObject(ack_payload, "status", "error");
+                    cJSON_AddStringToObject(ack_payload, "reason", "flash_write_error");
+                }
 
                 if (corr_data != NULL && strlen(corr_data) > 0){
                     cJSON_AddStringToObject(ack_payload, "correlation_id", corr_data);
@@ -96,6 +101,7 @@ static void parse_json_envelope(const char *payload, mqtt_msg_type_t msg_type, c
                 if (ack_str){
                     // Gui goi qos = 1
                     mqtt_handler_publish(resp_topic, ack_str, strlen(ack_str), 1, 0 ,1);
+                    free(ack_str);
                 }
                 cJSON_Delete(ack_payload);
             }
@@ -219,8 +225,6 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
                     current_msg_type = MSG_TYPE_SYNC_SCHEDULE;
                     ESP_LOGI(TAG, "[SYNC_SCHEDULE] Nhận lệnh đồng bộ lịch từ Server");
                     request_app_state(STATE_SYNCING);
-                   // TODO: Gọi hàm local_storage_sync_schedule(...)
-                   // Sau khi xử lý xong → gửi Application ACK với Correlation Data
                 }
 
                // Nhận Audio Stream từ Server (TTS)
@@ -392,7 +396,7 @@ void mqtt_handler_init(void) {
     uint8_t mac[6];
     esp_read_mac(mac, ESP_MAC_WIFI_STA);
     snprintf(device_id, sizeof(device_id), "%02x%02x%02x%02x%02x%02x", 
-             mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+            mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 
     snprintf(client_id, sizeof(client_id), "esp32_%s", device_id);
     snprintf(status_topic, sizeof(status_topic), "iot_schedule/%s/status", device_id);

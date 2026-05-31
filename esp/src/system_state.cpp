@@ -109,7 +109,7 @@ bool request_app_state(app_state_t new_state){
                 audio_start_streaming(false);
             }
             // Nếu đang stream down (loa đang kêu), FSM sẽ phải tự xử lý việc xả buffer I2S ở loop chính
-            if (audio_is_finished){
+            if (audio_is_finished()){
                 audio_set_finished(false);
             }
             current_app_state = new_state;

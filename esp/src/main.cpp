@@ -11,6 +11,7 @@
 #include "mqtt_protocol.h"
 #include "button_core.h"
 #include "audio_psram.h"
+#include "local_storage.h"
 
 static const char *TAG = "MAIN_APP";
 
@@ -59,8 +60,10 @@ void app_logic_task(void *pvParameters) {
     // Khởi tạo các ngoại vi
     time_core_init();
     audio_i2s_init();
-
     button_core_init();
+
+    //LitteFS 
+    local_storage_init();
 
     ESP_LOGI(TAG, "Logic Task bắt đầu hoạt động...");
     // Biến lưu thời điểm cuối cùng xin giờ
