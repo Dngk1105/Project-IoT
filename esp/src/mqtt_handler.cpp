@@ -69,7 +69,7 @@ uint32_t mqtt_get_last_pong_time(void) {
         }
     }
  * ========================================================================= */
-static void parse_json_envelope(const char *payload, mqtt_msg_type_t msg_type){
+static void parse_json_envelope(const char *payload, mqtt_msg_type_t msg_type, const char *resp_topic, const char *corr_data){  
     cJSON *root = cJSON_Parse(payload);
     if (root == NULL){
         ESP_LOGE(TAG, "PayLoad JSON khong hop le!!");
@@ -80,7 +80,25 @@ static void parse_json_envelope(const char *payload, mqtt_msg_type_t msg_type){
     if (data != NULL && cJSON_IsObject(data)){
         if (msg_type == MSG_TYPE_SYNC_SCHEDULE){
             ESP_LOGI(TAG, "Dong bo lich hoc, chuyen tiep qua local_storage...");
-            // TODO: local_storage_save_schedule(cJSON_PrintUnformatted(data));
+            // TODO (Phase tiep theo):
+            // bool success = local_storage_save_schedule(data, corr_data);
+
+            
+            if (resp_topic != NULL && strlen(resp_topic) > 0){
+                cJSON *ack_payload = cJSON_CreateObject();
+                cJSON_AddStringToObject(ack_payload, "status", "success");
+
+                if (corr_data != NULL && strlen(corr_data) > 0){
+                    cJSON_AddStringToObject(ack_payload, "correlation_id", corr_data);
+                }
+
+                char *ack_str = cJSON_PrintUnformatted(ack_payload);
+                if (ack_str){
+                    // Gui goi qos = 1
+                    mqtt_handler_publish(resp_topic, ack_str, strlen(ack_str), 1, 0 ,1);
+                }
+                cJSON_Delete(ack_payload);
+            }
         }
         else if (msg_type == MSG_TYPE_SHADOW){
             ESP_LOGI(TAG, "Device shadow. Cap nhat ngoai vi");
@@ -185,32 +203,32 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
            //static bool is_audio_stream = false;
 
            // Manh dau tien
-           if (event->current_data_offset == 0){
+            if (event->current_data_offset == 0){
                // Parse topic neu co
                // char safe_topic[128] = {0};   Doi sang current_topic
-               int copy_len = (event->topic_len < sizeof(current_topic) - 1) ? event->topic_len : sizeof(current_topic) - 1;
-               if (event->topic && event->topic_len > 0){
-                   strncpy(current_topic, event->topic, copy_len);
-                   current_topic[copy_len] = '\0';
-               } 
-               ESP_LOGI(TAG, "MQTT Message Received | Topic: %s |Tổng dung lượng: %d bytes", current_topic, event->total_data_len);
+                int copy_len = (event->topic_len < sizeof(current_topic) - 1) ? event->topic_len : sizeof(current_topic) - 1;
+                if (event->topic && event->topic_len > 0){
+                    strncpy(current_topic, event->topic, copy_len);
+                    current_topic[copy_len] = '\0';
+                } 
+                ESP_LOGI(TAG, "MQTT Message Received | Topic: %s |Tổng dung lượng: %d bytes", current_topic, event->total_data_len);
 
                // Xử lý theo Sơ đồ Tuần tự
                // Lệnh đồng bộ lịch từ Server
-               if (strstr(event->topic, "/commands/sync_schedule") != NULL) {
+                if (strstr(event->topic, "/commands/sync_schedule") != NULL) {
                     current_msg_type = MSG_TYPE_SYNC_SCHEDULE;
                     ESP_LOGI(TAG, "[SYNC_SCHEDULE] Nhận lệnh đồng bộ lịch từ Server");
                     request_app_state(STATE_SYNCING);
                    // TODO: Gọi hàm local_storage_sync_schedule(...)
                    // Sau khi xử lý xong → gửi Application ACK với Correlation Data
-               }
+                }
 
                // Nhận Audio Stream từ Server (TTS)
-               else if (strstr(event->topic, "/audio/stream_down") != NULL) {
+                else if (strstr(event->topic, "/audio/stream_down") != NULL) {
                     ESP_LOGI(TAG, "[STREAM_DOWN] Nhận chunk audio TTS từ Server (%d bytes)", event->data_len);
                     current_msg_type = MSG_TYPE_AUDIO_DOWN;
-               }
-               
+                }
+                
                // Lệnh điều khiển Device Shadow
                 else if (strstr(event->topic, "/shadow/") != NULL) {
                     current_msg_type = MSG_TYPE_SHADOW;
@@ -313,11 +331,28 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
                     // Cac goi tin JSON. Gia su goi < MQTT_BUFFER_IN_SIZE (Khong bam)
                     // Neu gui goi tin lon thi can noi vao 
                     if (event->current_data_offset == 0 && event->data_len == event->total_data_len){
+
+                        char response_topic[128] = {0};
+                        char correlation_data[64] = {0};
+                        if (event->property){ // Neu co properties tu Mqtt v5
+                            esp_mqtt5_event_property_t *prop = (esp_mqtt5_event_property_t *) event->property;
+
+                            if (prop->response_topic && prop->response_topic_len > 0) {
+                                int copy_len = (prop->response_topic_len < sizeof(response_topic) - 1) ? prop->response_topic_len : sizeof(response_topic) - 1;
+                                strncpy(response_topic, prop->response_topic, copy_len);
+                            }
+
+                            if (prop->correlation_data && prop->correlation_data_len > 0) {
+                                int copy_len = (prop->correlation_data_len < sizeof(correlation_data) - 1) ? prop->correlation_data_len : sizeof(correlation_data) - 1;
+                                strncpy(correlation_data, prop->correlation_data, copy_len);
+                            }
+                        }
+
                         char *json_str = (char*)malloc(event->data_len + 1);
                         if (json_str) {
                             memcpy(json_str, event->data, event->data_len);
                             json_str[event->data_len] = '\0';
-                            parse_json_envelope(json_str, current_msg_type);
+                            parse_json_envelope(json_str, current_msg_type, response_topic, correlation_data);
                             free(json_str);
                         }
                     } else{
