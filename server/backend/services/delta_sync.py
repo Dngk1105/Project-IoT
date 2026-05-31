@@ -25,7 +25,6 @@ class DeltaSyncService:
         time_limit = now + timedelta(hours=48)
 
         async with AsyncSessionLocal() as session:
-            #B1: Lay Desired State (Trang thai mong muon)
             #Lay cac su kien hop le trong 48h (Khong bi huy)
             stmt_active = select(CalendarEvent).where(
                 and_(

@@ -233,3 +233,4 @@ server/backend/services/crawlers/hust_qldt_state.json
 server/backend/iot_calendar.db
 server/backend/services/crawlers/credentials.json  
 server/backend/services/crawlers/token.json  
+server/backend/integrations/API_GEMINI.py

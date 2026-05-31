@@ -16,7 +16,11 @@ class MqttTopics:
     def audio_down(device_id: str) -> str:
         """Gửi luồng âm thanh nhị phân xuống loa"""
         return f"{PROJECT_PREFIX}/{device_id}/audio/stream_down"
-
+    
+    @staticmethod 
+    def audio_control(device_id: str) -> str:
+        """Gui lenh xu li ve am thanh (start/stop/error)"""
+        return f"{PROJECT_PREFIX}/{device_id}/audio/control"
     @staticmethod
     def shadow_desired(device_id: str) -> str:
         """Gửi cấu hình ngoại vi xuống ESP32 (VD: vol_max, led_color)"""

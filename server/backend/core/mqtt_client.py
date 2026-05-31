@@ -60,7 +60,7 @@ async def on_message(client: MQTTClient, topic: str, payload: bytes, qos: int, p
         return
     
     # Khong echo lai topic minh pub
-    if category == "commands" or action == "stream_down":
+    if category == "commands" or action == "stream_down" or action == "control":
         return
     
     target_service = None

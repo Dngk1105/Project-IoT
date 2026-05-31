@@ -33,7 +33,8 @@ typedef enum {
     MSG_TYPE_SHADOW,
     MSG_TYPE_EVENTS,
     MSG_TYPE_PONG,
-    MSG_TYPE_TIME_SYNC
+    MSG_TYPE_TIME_SYNC,
+    MSG_TYPE_AUDIO_CONTROL_DOWN
 } mqtt_msg_type_t;
 static mqtt_msg_type_t current_msg_type = MSG_TYPE_UNKNOWN;
 static char current_topic[128] = {0}; // Lưu lại topic của chunk đầu tiên
@@ -112,18 +113,20 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
             set_sys_state(SYS_MQTT_OK); 
             
             /* Subscribe các topic theo đúng MQTT Convention */
-            char cmd_topic[80], audio_down_topic[80], shadow_topic[80], pong_topic[80];
+            char cmd_topic[80], audio_down_topic[80], shadow_topic[80], pong_topic[80], audio_ctrl_topic[80];
             
             snprintf(cmd_topic,       sizeof(cmd_topic),       "iot_schedule/%s/commands/#", device_id);
             snprintf(audio_down_topic,sizeof(audio_down_topic),"iot_schedule/%s/audio/stream_down", device_id);
             snprintf(shadow_topic,    sizeof(shadow_topic),    "iot_schedule/%s/shadow/#", device_id);
             snprintf(pong_topic,    sizeof(pong_topic),    "iot_schedule/%s/telemetry/pong", device_id);
+            snprintf(audio_ctrl_topic, sizeof(audio_ctrl_topic), "iot_schedule/%s/audio/control", device_id);
 
 
             mqtt_handler_subscribe(cmd_topic, 2);
             mqtt_handler_subscribe(audio_down_topic, 0);   // Audio stream ưu tiên tốc độ (QoS 0)
             mqtt_handler_subscribe(shadow_topic, 1);
             mqtt_handler_subscribe(pong_topic, 0);
+            mqtt_handler_subscribe(audio_ctrl_topic, 1);
 
             //Xin dong bo time voi server
             char time_req_topic[80];
@@ -188,6 +191,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
                int copy_len = (event->topic_len < sizeof(current_topic) - 1) ? event->topic_len : sizeof(current_topic) - 1;
                if (event->topic && event->topic_len > 0){
                    strncpy(current_topic, event->topic, copy_len);
+                   current_topic[copy_len] = '\0';
                } 
                ESP_LOGI(TAG, "MQTT Message Received | Topic: %s |Tổng dung lượng: %d bytes", current_topic, event->total_data_len);
 
@@ -224,6 +228,11 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
                     current_msg_type = MSG_TYPE_TIME_SYNC;
                     ESP_LOGI(TAG, "[TIME_SYNC] Nhận time_sync từ Server");
                 }
+
+                else if (strstr(event->topic, "/audio/control") != NULL) {
+                    current_msg_type = MSG_TYPE_AUDIO_CONTROL_DOWN;
+                    ESP_LOGI(TAG, "[AUDIO_CONTROL] Nhận lệnh điều khiển loa từ Server");
+                }
                 
                 else {
                     current_msg_type = MSG_TYPE_UNKNOWN;
@@ -234,7 +243,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
                 case MSG_TYPE_AUDIO_DOWN:
                     //Du lieu nhi phan tho, parse vao ring buffer
                     if (event->data_len > 0){
-                        audio_ringbuf_feed((const uint8_t*)event->data, event->data_len);
+                        audio_psram_feed((const uint8_t*)event->data, event->data_len);
                         ESP_LOGI(TAG, "Xa %d bytes vao Ringbuffer", event->data_len);
                     }
                     break;
@@ -250,7 +259,54 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
                         mqtt_handler_publish(time_request_topic, "{\"action\":\"get_time\"}", 0, 1, 0); // qos 1, khong retain
                     }
                     break;
+                case MSG_TYPE_AUDIO_CONTROL_DOWN:
+                    if (event->current_data_offset == 0 && event->data_len == event->total_data_len){
+                        char *json_str = (char*)malloc(event->data_len + 1);
+                        if (json_str) {
+                            memcpy(json_str, event->data, event->data_len);
+                            json_str[event->data_len] = '\0';
+                            ESP_LOGI(TAG, "[AUDIO_CONTROL] JSON Raw: %s", json_str);
+                            cJSON *root = cJSON_Parse(json_str);
+                            if (root) {
+                                cJSON *data = cJSON_GetObjectItem(root, "data");
+                                if (data) {
+                                    cJSON *action = cJSON_GetObjectItem(data, "action");
+                                    if (action && cJSON_IsString(action)) {
+                                        ESP_LOGI(TAG, "[AUDIO_CONTROL] Action nhận được: %s", action->valuestring);
 
+                                        if (strcmp(action->valuestring, "start") == 0) {
+                                            ESP_LOGI(TAG, "Server báo: Chuẩn bị phát luồng TTS...");
+                                            extern void audio_psram_init(void);
+                                            audio_psram_init();
+
+                                        } 
+                                        
+                                        else if (strcmp(action->valuestring, "stop") == 0) {
+                                            ESP_LOGI(TAG, "Server báo: ĐÃ PHÁT XONG TTS.");
+                                            audio_ringbuf_finish();
+                                        }
+
+                                        else if (strcmp(action->valuestring, "error") == 0) {
+                                            ESP_LOGE(TAG, "Server báo lỗi TTS!");
+                                            audio_ringbuf_finish();
+                                        } 
+                                        else {
+                                            ESP_LOGW(TAG, "Action không hỗ trợ: %s", action->valuestring);
+                                        }
+                                    } else{
+                                        ESP_LOGE(TAG, "Không tìm thấy field 'action' hoặc không phải string");
+                                    }
+                                } else{
+                                    ESP_LOGE(TAG, "Không tìm thấy object 'data' trong JSON");
+                                }
+                                cJSON_Delete(root);
+                            } else{
+                                ESP_LOGE(TAG, "cJSON_Parse thất bại! JSON không hợp lệ.");
+                            }
+                            free(json_str);
+                        }
+                    }
+                    break;
                 case MSG_TYPE_SYNC_SCHEDULE:
                 case MSG_TYPE_SHADOW:
                 case MSG_TYPE_TIME_SYNC:
@@ -272,15 +328,15 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
                     break;
             }
 
-            // Don dep neu nhan manh cuoi
-            if (event->current_data_offset + event->data_len >= event->total_data_len){
-                if (current_msg_type == MSG_TYPE_AUDIO_DOWN){
-                    ESP_LOGI(TAG, "Đã nhận trọn vẹn file Audio TTS.");
-                    // Báo cho Audio Task biết để xả nốt loa
-                    audio_ringbuf_finish();
-                }
-                current_msg_type = MSG_TYPE_UNKNOWN;
-            }
+            // // Don dep neu nhan manh cuoi
+            // if (event->current_data_offset + event->data_len >= event->total_data_len){
+            //     if (current_msg_type == MSG_TYPE_AUDIO_DOWN){
+            //         ESP_LOGI(TAG, "Đã nhận trọn vẹn file Audio TTS.");
+            //         // Báo cho Audio Task biết để xả nốt loa
+            //         audio_ringbuf_finish();
+            //     }
+            //     current_msg_type = MSG_TYPE_UNKNOWN;
+            // }
             break;
         }
         case MQTT_EVENT_ERROR:

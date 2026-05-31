@@ -20,7 +20,6 @@ class CalendarEventBase(BaseModel):
 
     @model_validator(mode='after')
     def validate_time_range(self) -> 'CalendarEventBase':
-        """Hook kiểm tra logic: Thời gian kết thúc phải lớn hơn thời gian bắt đầu"""
         if self.start_time >= self.end_time:
             raise ValueError('end_time bắt buộc phải diễn ra sau start_time')
         return self
@@ -29,14 +28,14 @@ class CalendarEventCreate(CalendarEventBase):
     source: EventSource = EventSource.VOICE_AI
     
 class CalendarEventUpdate(CalendarEventBase):
-    """Bản Update cho phép gửi các trường tùy ý (PATCH method)"""
+    """Update event khong can cap nhat toan bo bang"""
     summary: Optional[str] = Field(None, min_length=1, max_length=255)
     start_time: Optional[AwareDatetime] = None 
     end_time: Optional[AwareDatetime] = None
     is_cancelled: Optional[bool] = None
 
 class CalendarEventResponse(CalendarEventBase):
-    """Schema đẩy dữ liệu đầy đủ lên Web Dashboard"""
+    """Schema schema gui du lieu len web"""
     id: str
     source: EventSource
     tz_info: str
@@ -48,14 +47,13 @@ class CalendarEventResponse(CalendarEventBase):
 
 
 class EventLiteESP32(BaseModel):
-    """Schema vắt kiệt dữ liệu (Minified) dành riêng cho cấu trúc RAM của MCU"""
+    """Scheme gui du lieu cho esp"""
     id: str
-    t: int = Field(..., description="UNIX Timestamp nguyên thủy (Epoch Time)")
+    t: int = Field(..., description="UNIX Timestamp")
     
-    # Giới hạn chặt chẽ mã Action để code C++ parse switch-case không bị lỗi typo
     a: Literal["CLASS", "MEET", "VOICE", "ALARM"] 
     
-    msg: str = Field(..., max_length=32, description="Tóm tắt siêu ngắn để hiển thị OLED/LCD")
+    msg: str = Field(..., max_length=32, description="sieu ngan")
 
     @model_validator(mode='after')
     def validate_future_timestamp(self) -> 'EventLiteESP32':
