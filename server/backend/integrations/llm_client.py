@@ -1,6 +1,6 @@
 import google.generativeai as genai
 import logging
-from API_GEMINI import GEMINI_API_KEY
+from integrations.API_GEMINI import GEMINI_API_KEY
 from core.logger import get_logger
 
 logger = get_logger(__name__)
