@@ -16,12 +16,12 @@
  * THÔNG SỐ MQTT BROKER
  * ========================================================================= */
 //#define MQTT_BROKER_URI         "mqtt://192.168.0.102:1883" // IP của Server nội bộ
-#define MQTT_BROKER_URI         "mqtt://192.168.0.101:1883" // IP của Server nội bộ
+#define MQTT_BROKER_URI         "mqtt://192.168.0.100:1883" // IP của Server nội bộ
 // #define MQTT_USERNAME        "admin"                    
 // #define MQTT_PASSWORD        "secret"
 #define MQTT_KEEPALIVE_SEC      10                          // Chu kỳ gửi Pingreq
-#define MQTT_BUFFER_IN_SIZE     8192
-#define MQTT_BUFFER_OUT_SIZE   4096
+#define MQTT_BUFFER_IN_SIZE     16384
+#define MQTT_BUFFER_OUT_SIZE   8192
 
 #define PROJECT_PREFIX          "iot_schedule"
 /* =========================================================================
@@ -49,13 +49,16 @@
 #define AUDIO_SAMPLE_RATE       16000   // 16kHz chuẩn cho nhận diện giọng nói (STT)
 #define AUDIO_CHANNELS          1       // Mono
 #define AUDIO_BITS_PER_SAMPLE   16      // 16-bit
-#define AUDIO_BUFFER_SIZE       1024     // ← THÊM DÒNG NÀY
+#define AUDIO_BUFFER_SIZE       2048    
 #define VAD_THRESHOLD_DB        -40.0f  // Ngưỡng decibel để kích hoạt Voice Activity Detection
 #define VAD_AMPLITUDE_THRESHOLD 80
 
-#define MAX_STEREO_SAMPLES 4096
-#define RINGBUF_SIZE 16384 // 16KB
-#define PREBUFFER_BYTES 4096 // Tích đủ 4KB mới bắt đầu phát để chống lag mạng
+#define MAX_STEREO_SAMPLES 1024
+#define RINGBUF_SIZE 81920 // 16KB
+#define PREBUFFER_BYTES 16384 // Tích đủ 16KB mới bắt đầu phát để chống lag mạng
+
+// Cấp phát 2MB PSRAM cho âm thanh (Đủ cho 60 giây âm thanh chất lượng 16kHz)
+#define PSRAM_BUFFER_MAX 2048 * 1024
 
 // VAD Tuning
 #define VAD_AMPLITUDE_THRESHOLD     80

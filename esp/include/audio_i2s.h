@@ -43,6 +43,8 @@ bool audio_is_streaming(void);
 
 // Đẩy dữ liệu âm thanh nhị phân thô nhận từ MQTT vào RingBuffer (Non-blocking)
 void audio_ringbuf_feed(const uint8_t *data, size_t len);
+void audio_psram_init(void);
+void audio_psram_feed(const uint8_t *data, size_t len);
 
 // Báo hiệu đã nhận xong trọn vẹn toàn bộ các chunk file Audio từ Server
 void audio_ringbuf_finish(void);
@@ -64,6 +66,9 @@ void audio_flush_playback(void);
 
 //Xin dung, Module khac goi vao
 void audio_request_stop(void);
+
+
+extern void audio_test_beep_task(void *pvParameters);
 #ifdef __cplusplus
 }
 #endif

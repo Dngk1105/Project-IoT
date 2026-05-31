@@ -12,6 +12,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include "esp_timer.h"
+#include "esp_psram.h"
+#include "audio_psram.h"
+#include <math.h>
+
+uint8_t* psram_buffer = NULL;
+size_t psram_write_pos = 0;
 
 static const char *TAG = "AUDIO_I2S";
 
@@ -75,18 +81,7 @@ static i2s_std_config_t mic_config = {
  * ========================================================================= */
 static i2s_std_config_t spk_config = {
     .clk_cfg  = I2S_STD_CLK_DEFAULT_CONFIG(AUDIO_SAMPLE_RATE),
-    .slot_cfg = {
-        .data_bit_width = I2S_DATA_BIT_WIDTH_16BIT,
-        .slot_bit_width = I2S_SLOT_BIT_WIDTH_16BIT,
-        .slot_mode      = I2S_SLOT_MODE_STEREO,
-        .slot_mask      = I2S_STD_SLOT_BOTH,
-        .ws_width       = 16,
-        .ws_pol         = false,
-        .bit_shift      = true,
-        .left_align     = false,
-        .big_endian     = false,
-        .bit_order_lsb  = false
-    },
+    .slot_cfg = I2S_STD_PHILIPS_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_STEREO),
     .gpio_cfg = {
         .mclk = I2S_GPIO_UNUSED,
         .bclk = (gpio_num_t)I2S_SPK_BCLK,
@@ -97,18 +92,41 @@ static i2s_std_config_t spk_config = {
     }
 };
 
-/* =========================================================================
- * Xa bo dem DMA
- * Lap day bo dem gia tri 0x00 de ngat tin hieu am thanh
- * ========================================================================= */
-void audio_flush_playback(void){
-    if(!tx_handle) return;
-    uint8_t silence_buf[2048] = {0};
-    size_t written = 0;
-    for (int i = 0; i < 12; i++){
-        i2s_channel_write(tx_handle, silence_buf, sizeof(silence_buf), &written, pdMS_TO_TICKS(100));
+
+void audio_test_beep_task(void *pvParameters) {
+    ESP_LOGI("HW_TEST", "=== BẮT ĐẦU BÀI TEST AUTO BEEP (5s/lần) ===");
+    
+    // Đợi 2 giây cho hệ thống ổn định rồi mới bắt đầu test
+    vTaskDelay(pdMS_TO_TICKS(2000)); 
+
+    while(1) {
+        // 1. Đảm bảo kho PSRAM đã được reset
+        psram_write_pos = 0;
+
+        // 2. Tạo sóng Sin 440Hz dài 0.5s (8000 mẫu = 16000 bytes)
+        int sample_rate = 16000;
+        int num_samples = 8000;
+        float freq = 440.0;
+        int volume = 4000; // Âm lượng vừa phải chống xé màng loa
+
+        for (int i = 0; i < num_samples; i++) {
+            float t = (float)i / sample_rate;
+            int16_t sample = (int16_t)(sin(2.0 * M_PI * freq * t) * volume);
+            
+            // Ép thẳng 2 byte của sample vào PSRAM
+            if (psram_buffer && (psram_write_pos + 2 <= 4*1024*1024)) {
+                memcpy(&psram_buffer[psram_write_pos], &sample, 2);
+                psram_write_pos += 2;
+            }
+        }
+
+        // 3. Kích hoạt cờ cho Playback Task "hát"
+        ESP_LOGI("HW_TEST", "Đã nạp xong %d bytes sóng Sin. Ra lệnh phát!", psram_write_pos);         
+        is_playback_finished = true; 
+
+        // 4. Ngủ 5 giây rồi lặp lại
+        vTaskDelay(pdMS_TO_TICKS(5000));
     }
-    ESP_LOGI(TAG, "Da xa sach DMA I2S (Zero-fill).");
 }
 
 void audio_request_stop(void) {
@@ -257,11 +275,11 @@ static void audio_stream_task(void *pvParameters) {
 esp_err_t audio_i2s_init(void) {
     ESP_LOGI(TAG, "Khởi tạo I2S — NUM_0(Mic) + NUM_1(Loa) - Bo dem RingBuffer");
 
-    audio_ringbuf = xRingbufferCreate(RINGBUF_SIZE, RINGBUF_TYPE_BYTEBUF);
-    if (!audio_ringbuf){
-        ESP_LOGE(TAG, "KHONG TAO RINGBUF DUOC!");
-        return ESP_FAIL;
-    }
+    // audio_ringbuf = xRingbufferCreate(RINGBUF_SIZE, RINGBUF_TYPE_BYTEBUF);
+    // if (!audio_ringbuf){
+    //     ESP_LOGE(TAG, "KHONG TAO RINGBUF DUOC!");
+    //     return ESP_FAIL;
+    // }
 
     i2s_chan_config_t mic_chan = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_0, I2S_ROLE_MASTER);
     ESP_ERROR_CHECK(i2s_new_channel(&mic_chan, NULL, &rx_handle));
@@ -310,104 +328,58 @@ bool audio_is_streaming(void) { return is_streaming; }
  * Nếu data bị chia ra thành từng chunk, nếu có chunk lẻ thì cần ghép nối byte thừa và chunk mới 
  * ========================================================================= */
 static void audio_playback_task(void *pvParameters) {    
-
-    size_t item_size;
-    bool is_prebuffering = true;
-    uint8_t leftover_byte = 0;
-    bool has_leftover = false;
-
-    static int16_t stereo[MAX_STEREO_SAMPLES * 2];
-
-    ESP_LOGI(TAG, "Playback Task khởi động, chờ dữ liệu từ MQTT...");
+    // Mảng 2048 chuẩn xác chống tràn RAM
+    static int16_t stereo_buf[2048]; 
+    ESP_LOGI(TAG, "Playback Task khởi động — Chế độ PSRAM Staging...");
 
     while (1){
-        // Block task cho du lieu ringbuffer 
-        // Khi cho du lieu do vao set timeout 1s
-        // Khi nhan du lieu do vao set timout 10ms
-        TickType_t wait_time = is_prebuffering ? pdMS_TO_TICKS(1000) : pdMS_TO_TICKS(10);
-        uint8_t *item = (uint8_t*)xRingbufferReceive(audio_ringbuf, &item_size, wait_time);
-        if (item != NULL){
-            if (is_prebuffering){
-                UBaseType_t free_size = xRingbufferGetCurFreeSize(audio_ringbuf);
-                UBaseType_t used_size = RINGBUF_SIZE - free_size;
+        // CHỈ PHÁT KHI ĐÃ NHẬN ĐỦ LỆNH STOP TỪ MQTT VÀ CÓ DỮ LIỆU
+        if (is_playback_finished && psram_write_pos > 0) {
+            ESP_LOGI("PLAYBACK", "Bắt đầu phát từ PSRAM. Tổng: %d bytes", psram_write_pos);
+            
+            size_t read_pos = 0;
+            size_t samples_played = 0;
+            const size_t fade_samples = 1600; // Fade-in 100ms chống tiếng "Bụp"
 
-                if (used_size >= PREBUFFER_BYTES || is_playback_finished){
-                    is_prebuffering = false;
-                    ESP_LOGI(TAG, "Đã tích đủ %d bytes. Bắt đầu đẩy ra I2S.", used_size);
-                    request_app_state(STATE_STREAM_DOWN); // Báo FSM để tắt Watchdog
-                } else {
-                    vRingbufferReturnItem(audio_ringbuf, (void *)item);
-                    vTaskDelay(pdMS_TO_TICKS(10));
-                    continue;
+            while (read_pos < psram_write_pos) {
+                size_t remaining = psram_write_pos - read_pos;
+                size_t bytes_to_read = (remaining > 2048) ? 2048 : remaining;
+                size_t samples_to_read = bytes_to_read / 2;
+
+                for (size_t i = 0; i < samples_to_read; i++) {
+                    int16_t mono_sample;
+                    memcpy(&mono_sample, &psram_buffer[read_pos + (i * 2)], 2);
+                    
+                    float volume_multiplier = 1.0; 
+
+                    // ÁP DỤNG FADE-IN CHO ĐOẠN ĐẦU CÂU NÓI
+                    if (samples_played < fade_samples) {
+                        float fade_coeff = (float)samples_played / (float)fade_samples;
+                        volume_multiplier *= fade_coeff;
+                        samples_played++;
+                    }
+
+                    stereo_buf[i * 2]     = (int16_t)(mono_sample * volume_multiplier); 
+                    stereo_buf[i * 2 + 1] = (int16_t)(mono_sample * volume_multiplier);
                 }
-            }
 
-            // Mono -> Stero, Noi chunk
-            size_t sample_count = 0;
-            size_t data_idx = 0;
-            // Neu co byte thua, ghep byte dau tien vao chunk 
-            if (has_leftover && item_size > 0){
-                // Chuẩn PCM Little Endian: Byte lẻlà LSB, Byte mới là MSB
-                uint16_t sample = leftover_byte | ((uint16_t)item[0] << 8);
-                int32_t v = (int16_t)sample * 2;
-                if (v >  32767) v =  32767;
-                if (v < -32768) v = -32768;
-                
-                stereo[0] = (int16_t)v; // LEFT
-                stereo[1] = (int16_t)v; // RIGHT
-                sample_count++;
-                data_idx++; // Đã dùng mất 1 byte của chunk mới
-                has_leftover = false;
-            }
-
-            // Xu li cac cap byte tiep theo
-            while (data_idx + 1 < item_size) {
-                // Nếu buffer đầy thì xả ra I2S trước để lấy chỗ trống
-                if (sample_count >= MAX_STEREO_SAMPLES) {
-                    size_t written = 0;
-                    i2s_channel_write(tx_handle, stereo, sample_count * 2 * sizeof(int16_t), &written, pdMS_TO_TICKS(500));
-                    sample_count = 0;
-                }
-        
-                uint16_t sample = item[data_idx] | ((uint16_t)item[data_idx + 1] << 8);
-                int32_t v = (int16_t)sample * 2;
-                if (v >  32767) v =  32767;
-                if (v < -32768) v = -32768;
-                
-                stereo[sample_count * 2]     = (int16_t)v;
-                stereo[sample_count * 2 + 1] = (int16_t)v;
-                sample_count++;
-                data_idx += 2;
-            }
-
-            // Nếu chunk này lẻ, dư ra 1 byte cuối cùng
-            if (data_idx < item_size) {
-                leftover_byte = item[data_idx];
-                has_leftover = true;
+                size_t written = 0;
+                i2s_channel_write(tx_handle, stereo_buf, samples_to_read * 4, &written, portMAX_DELAY);
+                read_pos += bytes_to_read;
             }
             
-            // Ghi Phan con lai ra DMA
-            if (sample_count > 0) {
-                size_t written = 0;
-                esp_err_t ret = i2s_channel_write(tx_handle, stereo, sample_count * 2 * sizeof(int16_t), &written, pdMS_TO_TICKS(500));
-            }
-
-            // Giao trả lại khối nhớ cho FreeRTOS quản lý
-            vRingbufferReturnItem(audio_ringbuf, (void *)item);
-        } else {    // Khong co item
-            if (!is_prebuffering){
-                if (is_playback_finished){
-                    ESP_LOGI(TAG, "Hoàn tất phát luồng TTS. Đang xả DMA...");
-                    audio_flush_playback();
-                    is_prebuffering = true;
-                    request_app_state(STATE_IDLE); // Trả ESP32 về trạng thái ngủ
-                } else {
-                    // Co jitter 
-                    ESP_LOGW(TAG, "Buffer Underrun! Loa bị đói dữ liệu do manglag.");
-                    is_prebuffering = true; // Ép tích lũy lại Pre-buffer
-                }
-            }
-        }
+            // Phát xong: Reset kho và trạng thái
+            psram_write_pos = 0; 
+            is_playback_finished = false; 
+            ESP_LOGI("PLAYBACK", "Đã phát xong luồng TTS, kho PSRAM đã trống.");
+            
+        } else {
+            // CHẾ ĐỘ CHỜ (KHI KHÔNG CÓ LỆNH PHÁT)
+            // Bơm số 0 liên tục vào DMA để giữ nhịp BCLK, triệt tiêu nhiễu rè nền
+            memset(stereo_buf, 0, sizeof(stereo_buf));
+            size_t written = 0;
+            i2s_channel_write(tx_handle, stereo_buf, sizeof(stereo_buf), &written, portMAX_DELAY);
+        }        
     }
 }
 
@@ -429,6 +401,34 @@ void audio_ringbuf_feed(const uint8_t *data, size_t len){
 
 void audio_ringbuf_finish(void) {
     is_playback_finished = true;
+}
+
+void audio_psram_init(void) {
+    if (!psram_buffer) {
+        psram_buffer = (uint8_t*)heap_caps_malloc(PSRAM_MAX_SIZE, MALLOC_CAP_SPIRAM);
+    }
+    psram_write_pos = 0;
+}
+
+void audio_psram_feed(const uint8_t* data, size_t len) {
+    if (psram_buffer && (psram_write_pos + len < PSRAM_MAX_SIZE)) {
+        memcpy(psram_buffer + psram_write_pos, data, len);
+        psram_write_pos += len;
+    }
+}
+
+/* =========================================================================
+ * Xa bo dem DMA
+ * Lap day bo dem gia tri 0x00 de ngat tin hieu am thanh
+ * ========================================================================= */
+void audio_flush_playback(void){
+    if(!tx_handle) return;
+    uint8_t silence_buf[2048] = {0};
+    size_t written = 0;
+    for (int i = 0; i < 32; i++){
+        i2s_channel_write(tx_handle, silence_buf, sizeof(silence_buf), &written, pdMS_TO_TICKS(100));
+    }
+    ESP_LOGI(TAG, "Da xa sach DMA I2S (Zero-fill).");
 }
 
 /* =========================================================================

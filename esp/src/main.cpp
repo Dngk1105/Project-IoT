@@ -10,7 +10,7 @@
 #include "system_state.h"
 #include "mqtt_protocol.h"
 #include "button_core.h"
-
+#include "audio_psram.h"
 
 static const char *TAG = "MAIN_APP";
 
@@ -154,7 +154,7 @@ extern "C" void app_main() {
     set_sys_state(SYS_INIT);
     request_app_state(STATE_IDLE);
 
-
+    audio_psram_init();
     wifi_init_sta();
 
     // Core 0: Mạng & MQTT Lo viec giao tiep, giu nhip PINGREQ va bat tin hieu mang
@@ -165,5 +165,7 @@ extern "C" void app_main() {
     xTaskCreatePinnedToCore(app_logic_task, "App_Audio_Task",
                             TASK_STACK_AUDIO, NULL, TASK_PRIO_AUDIO, NULL, 1);
 
+    // extern void audio_test_beep_task(void *pvParameters);
+    // xTaskCreatePinnedToCore(audio_test_beep_task, "Test_Beep", 4096, NULL, 5, NULL, 1);
     ESP_LOGI(TAG, "Tất cả task đã tạo xong. Hệ thống đang chạy.");
 }

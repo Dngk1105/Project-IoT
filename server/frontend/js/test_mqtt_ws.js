@@ -24,7 +24,8 @@ function playRawPCM(messageBuffer) {
 
     // [FIX LỖI MEMORY ALIGNMENT] 
     // Tạo một bản sao độc lập để reset byteOffset về 0
-    const safeBuffer = new Uint8Array(messageBuffer).buffer;
+    const bytes = new Uint8Array(messageBuffer);
+    const safeBuffer = bytes.slice().buffer;
     
     // 1. Ép mảng byte thành mảng số nguyên 16-bit an toàn
     const int16Array = new Int16Array(safeBuffer);
@@ -35,7 +36,6 @@ function playRawPCM(messageBuffer) {
         float32Array[i] = int16Array[i] / 32768.0; 
     }
 
-    // ... (Giữ nguyên các đoạn code khởi tạo AudioBuffer bên dưới)
     const audioBuffer = audioCtx.createBuffer(1, float32Array.length, 16000);
     audioBuffer.getChannelData(0).set(float32Array);
 
@@ -53,43 +53,84 @@ function playRawPCM(messageBuffer) {
 }
 
 
-document.getElementById('btnSendBeep').addEventListener('click', () => {
+document.getElementById('btnSendBeep').addEventListener('click', async () => {
     if (!client || !client.connected) {
         alert("Vui lòng kết nối Broker trước!");
         return;
     }
 
-    // Cấu hình âm thanh chuẩn với ESP32: 16kHz, 16-bit Mono
-    const sampleRate = 16000;
-    const duration = 0.5; // Dài nửa giây
-    const numSamples = sampleRate * duration; 
-    const frequency = 440; // Tần số 440Hz (Nốt La chuẩn)
-    const volume = 10000; // Biên độ (Max 32767, để 10000 cho khỏi cháy loa)
+    // 🔴 CHÚ Ý: Huynh nhớ kiểm tra Serial Log của ESP32 để lấy đúng ID nhé!
+    const targetDeviceId = "e072a1d6f1bc"; 
+    const controlTopic = `iot_schedule/${targetDeviceId}/audio/control`;
+    const streamTopic = `iot_schedule/${targetDeviceId}/audio/stream_down`;
 
-    // Tạo mảng 16-bit
+    // 1. Tạo sóng Sin 440Hz dài 1 giây (16000 mẫu = 32000 bytes)
+    const sampleRate = 16000;
+    const duration = 1.0; 
+    const numSamples = sampleRate * duration; 
+    const frequency = 440; 
+    const volume = 10000; 
+
     const pcmBuffer = new Int16Array(numSamples);
-    
-    // Đổ sóng Sin vào mảng
     for (let i = 0; i < numSamples; i++) {
         const t = i / sampleRate;
         pcmBuffer[i] = Math.sin(2 * Math.PI * frequency * t) * volume;
     }
+    const fullPayload = new Uint8Array(pcmBuffer.buffer);
 
-    // Ép kiểu về mảng Byte (Uint8) để gửi qua mạng
-    const payload = new Uint8Array(pcmBuffer.buffer);
-    
-    // Điền ID thiết bị của huynh vào đây
-    const targetDeviceId = "e072a1d6f1bc"; 
-    const topic = `iot_schedule/${targetDeviceId}/audio/stream_down`;
-
-    // Bắn gói tin QoS 0 cho nhẹ mạng
-    client.publish(topic, payload, { qos: 0 }, (err) => {
-        if (!err) {
-            appendLog('OUT', topic, `[🎵 Đã bắn tiếng Bíp: ${payload.length} bytes]`);
-        } else {
-            appendLog('OUT', 'ERROR', 'Gửi thất bại: ' + err);
+    // 2. GỬI LỆNH START (Mồi cho ESP32 mở amply)
+    const sessionId = "beep_" + Math.floor(Math.random()*1000);
+    const startPayload = JSON.stringify({
+        msg_id: "msg_js_1",
+        timestamp: Math.floor(Date.now() / 1000),
+        v: "1.0",
+        data: { 
+            action: "start", 
+            session_id: sessionId, 
+            chunk_count: Math.ceil(fullPayload.length / 4096), 
+            sample_rate: 16000 
         }
     });
+    client.publish(controlTopic, startPayload, { qos: 1 });
+    appendLog('OUT', controlTopic, `[START] Chuẩn bị gửi ${fullPayload.length} bytes`);
+
+    // Đợi 150ms cho ESP32 cấp phát xong RAM I2S
+    await new Promise(r => setTimeout(r, 150));
+
+    // 3. BƠM DATA NHỊ PHÂN CÓ ĐIỀU TỐC (MÁY TẠO NHỊP)
+    const chunkSize = 4096; // 4096 bytes = 128ms audio
+    const totalChunks = Math.ceil(fullPayload.length / chunkSize);
+    
+    const startTime = Date.now(); // Lấy mốc thời gian gốc
+    
+    for (let i = 0; i < fullPayload.length; i += chunkSize) {
+        const chunk = fullPayload.slice(i, i + chunkSize);
+        
+        client.publish(streamTopic, chunk, { qos: 0 });
+        appendLog('OUT', streamTopic, `[Bơm chunk ${Math.floor(i/chunkSize) + 1}/${totalChunks}]`);
+        
+        // TÍNH TOÁN THỜI GIAN TUYỆT ĐỐI (Cách ly hoàn toàn sai số của setTimeout)
+        const targetTime = startTime + ((i / chunkSize) + 1) * 90;
+        const sleepDuration = targetTime - Date.now();
+        
+        // Chỉ ngủ bù phần thời gian còn thiếu
+        if (sleepDuration > 0) {
+            await new Promise(r => setTimeout(r, sleepDuration));
+        }
+    }
+
+    // ========================================================
+    // 4. GỬI LỆNH STOP (Báo ESP32 chốt file và xả sạch màng loa)
+    // ĐÂY LÀ KHÚC HUYNH BỊ THIẾU Ở BẢN TRƯỚC ĐÓ!
+    // ========================================================
+    const stopPayload = JSON.stringify({
+        msg_id: "msg_js_2",
+        timestamp: Math.floor(Date.now() / 1000),
+        v: "1.0",
+        data: { action: "stop", session_id: sessionId }
+    });
+    client.publish(controlTopic, stopPayload, { qos: 1 });
+    appendLog('OUT', controlTopic, `[STOP] Đã bắn xong tiếng Bíp! Báo ESP32 ngắt dòng!`);
 });
 
 // ==========================================
@@ -176,5 +217,5 @@ document.getElementById('btnPublish').addEventListener('click', () => {
 
 // Xóa màn hình
 document.getElementById('btnClear').addEventListener('click', () => {
-    logWindow.innerHTML = '';
+    if (logWindow) logWindow.innerHTML = '';
 });

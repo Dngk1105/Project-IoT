@@ -1,60 +1,115 @@
 import io
-import wave
+import numpy as np
 import logging
 import asyncio
-from faster_whisper import WhisperModel
+import gc #garbage 
+import torch
+from transformers import pipeline, Pipeline
 
 logger = logging.getLogger(__name__)
 
 class STTClient:
-    def __init__(self):
-        # Chọn size model: "tiny", "base", "small", "medium", "large-v3"
-        # "small" hoặc "base" là điểm cân bằng tuyệt vời nhất giữa Tốc độ và Độ chính xác cho Tiếng Việt.
-        self.model_size = "large-v3"
+    def __init__(self, idle_timeout: int = 300):
+        self.model_name = "vinai/PhoWhisper-large"
+        self.device = 0 if torch.cuda.is_available() else -1 
+        self.torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32        
+        self.model = None
         
-        # device="cuda" (nếu có card NVIDIA) hoặc "cpu"
-        # compute_type="float16" (GPU) hoặc "int8" (CPU để giảm nửa RAM)
-        self.device = "cpu" 
-        self.compute_type = "int8" 
+        self.idle_timeout = idle_timeout
+        self.idle_timer = None
         
-        logger.info(f"Đang tải Whisper ({self.model_size}) vào RAM...")
-        self.model = WhisperModel(self.model_size, device=self.device, compute_type=self.compute_type)
-        logger.info("Tải mô hình STT Local hoàn tất!")
+        self.lock = asyncio.Lock() #giong mutex, tranh' xung dot load/unload model cung luc
+        
+        logger.info("Dang khoi tao STT...")
+        
+    async def _get_model(self) -> Pipeline:
+        """Neu idle thi tu dong bat lai"""
+        #async with: acquire() lock xong roi release() no luon
+        async with self.lock:
+            #Huy timer hien tai
+            if self.idle_timer:
+                self.idle_timer.cancel()
+                self.idle_timer = None
+            
+            if self.model is None:
+                logger.info(f"Đang tải PhoWhisper ({self.model_name}) vào VRAM/RAM...")
+                self.model = pipeline(
+                    "automatic-speech-recognition",
+                    model= self.model_name,
+                    device= self.device,
+                    torch_dtype = self.torch_dtype,
+                )
+                logger.info("Tai STT thanh cong")
+            return self.model
+    
+    
+    def _reset_idle_timer(self):
+        """Neu khong dung -> IDLE"""
+        if self.idle_timer:
+            self.idle_timer.cancel()
+        
+        loop = asyncio.get_running_loop()
+        self.idle_timer = loop.call_later(
+            self.idle_timeout, 
+            lambda: asyncio.create_task(self._go_to_idle())
+        )
+        
+    async def _go_to_idle(self):
+        """Giai phong bo nho"""
+        async with self.lock:
+            if self.model is not None:
+                logger.info("Lau khong dung, chuyen sang IDLE...")
+                # Giải phóng bộ nhớ của faster-whisper
+                del self.model
+                self.model = None
+                
+                # Ép Python và CUDA dọn dẹp bộ nhớ ngay lập tức
+                gc.collect()
+                
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                logger.info("Da giai phong VRAM")
 
-    def _pcm_to_wav(self, pcm_data: bytes, sample_rate: int = 16000) -> io.BytesIO:
-        """Đóng gói PCM thô thành định dạng WAV chuẩn ngay trên RAM"""
-        wav_io = io.BytesIO()
-        with wave.open(wav_io, 'wb') as wav_file:
-            wav_file.setnchannels(1)      
-            wav_file.setsampwidth(2)      
-            wav_file.setframerate(sample_rate)
-            wav_file.writeframes(pcm_data)
-        
-        wav_io.seek(0)
-        return wav_io
+    def _pcm_to_float32_array(self, pcm_data: bytes) -> np.ndarray:
+        """Chuyen truc tiep pcm 16bit sang float32 [-1,1]
+            pcm16 bit -> int -> float -> chuan hoa 
+        """
+        audio_arr = np.frombuffer(pcm_data, dtype= np.int16)
+        audio_float32 = audio_arr.astype(np.float32) / 32768.0
+        return audio_float32
 
-    def _run_whisper_sync(self, wav_io: io.BytesIO) -> str:
+    def _run_whisper_sync(self, model: Pipeline, audio_input: np.ndarray) -> str:
         """Hàm chạy đồng bộ (blocking) bọc lõi của Faster-Whisper"""
-        # Tham số beam_size=5 giúp AI cân nhắc nhiều cụm từ để cho ra câu chuẩn ngữ pháp nhất
-        segments, info = self.model.transcribe(wav_io, language="vi", beam_size=5)
+        result = model(
+            {
+            "sampling_rate": 16000,
+            "raw": audio_input
+        },
+        generate_kwargs={
+            "language": "vi",
+            "task": "transcribe"
+            }
+        )
         
-        # Gom các đoạn văn bản (segment) lại thành một câu hoàn chỉnh
-        text = "".join([segment.text for segment in segments])
-        return text.strip()
+        return result["text"].strip()
 
     async def transcribe(self, raw_pcm_data: bytes) -> str:
         try:
-            logger.info(f"Đang bọc {len(raw_pcm_data)} bytes PCM thành WAV...")
-            wav_io = self._pcm_to_wav(raw_pcm_data)
+            model = await self._get_model()
             
-            logger.info("Đang vắt óc nhận diện giọng nói (Local)...")
+            logger.info(f"Chuyển đổi {len(raw_pcm_data)} bytes...")
+            audio_input = self._pcm_to_float32_array(raw_pcm_data)
             
-            # Đẩy tác vụ STT sang một Thread (luồng) khác để không khóa (block) Server
-            user_text = await asyncio.to_thread(self._run_whisper_sync, wav_io)
+            logger.info("Đang nhận diện giọng nói...")
+            # Tạo luồng để xử lí, tránh block server
+            user_text = await asyncio.to_thread(self._run_whisper_sync, model, audio_input)
             
+            self._reset_idle_timer() #reset timer
+
             return user_text
         except Exception as e:
             logger.error(f"Lỗi Whisper Local: {e}")
+            self._reset_idle_timer()
             return ""
 
 # Khởi tạo đối tượng duy nhất (Singleton) để Model chỉ phải load vào RAM đúng 1 lần khi bật Server

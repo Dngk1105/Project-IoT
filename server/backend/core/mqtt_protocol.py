@@ -16,7 +16,11 @@ class MqttTopics:
     def audio_down(device_id: str) -> str:
         """Gửi luồng âm thanh nhị phân xuống loa"""
         return f"{PROJECT_PREFIX}/{device_id}/audio/stream_down"
-
+    
+    @staticmethod 
+    def audio_control(device_id: str) -> str:
+        """Gui lenh xu li ve am thanh (start/stop/error)"""
+        return f"{PROJECT_PREFIX}/{device_id}/audio/control"
     @staticmethod
     def shadow_desired(device_id: str) -> str:
         """Gửi cấu hình ngoại vi xuống ESP32 (VD: vol_max, led_color)"""
@@ -26,10 +30,15 @@ class MqttTopics:
     def telemetry_pong(device_id: str) -> str:
         """Trả lời nhịp tim (Pong) cho ESP32"""
         return f"{PROJECT_PREFIX}/{device_id}/telemetry/pong"
+    
+    @staticmethod
+    def calendar_sync_frontend() -> str:
+        """Dong bo lich voi WebDashboard"""
+        return f"{PROJECT_PREFIX}/frontend/calendar/sync"
 
 
 class PayloadBuilder:
-    """Lớp đóng gói dữ liệu thành Phong bì (Envelope) chuẩn hóa"""
+    """Lớp đóng gói dữ liệu"""
     
     @staticmethod
     def build_json(data: Dict[str, Any], version: str = "1.0") -> dict:
