@@ -31,9 +31,8 @@ class AudioEngineService:
                 self._audio_buffers[device_id].extend(payload)
             elif action == "request":
                 try:
-                    data = json.loads(payload.decode("utf-8"))
-                    request = AudioRequestESP32.model_validate_json(data)
-                    if request.action == "request-tts":
+                    request = AudioRequestESP32.model_validate_json(payload)
+                    if request.action == "request_tts":
                         logger.info(f"[{device_id}] Yêu cầu TTS - Event: {request.event_id} | Session: {request.session_id}")
                         
                         # TODO: Truy vấn DB để lấy thông tin sự kiện. Tạm thời dùng text mẫu:
@@ -86,19 +85,22 @@ class AudioEngineService:
                 spoken_text = ai_data.get("spoken_response", "Xin lỗi, tôi không hiểu ý bạn.")
                 
                 logger.info(f"[{device_id}] Phân tích Intent: {intent} | Action: {action} | Params: {params}")
-
+                
+                session_id = f"chat_{uuid.uuid4().hex[:8]}"                
+                await self.stream_audio_to_device(device_id, spoken_text, publish_cb, session_id)
+                
                 if intent == "CALENDAR":
                     # TODO: Gọi hàm từ crud_calendar để lưu DB, check trùng lịch...
                     pass
                 elif intent == "DEVICE":
                     # TODO: Bắn bản tin MQTT (shadow_desired) xuống ESP32 để bật tắt rơ-le / loa
                     pass
-                # Intent "CHAT" sẽ không cần làm gì ngoài việc phát giọng nói bên dưới
+                elif intent == "CHAT":
+                    await self.finish_session(device_id, publish_cb, session_id)
             except json.JSONDecodeError:
                 logger.error(f"[{device_id}] LLM trả về lỗi định dạng JSON: {cleaned_response}")
                 spoken_text = "Hệ thống AI đang gặp lỗi định dạng, vui lòng thử lại sau."
             
-            await self.stream_audio_to_device(device_id, spoken_text, publish_cb)
         except Exception as e:
             logger.error(f"Lỗi Pipeline AI: {e}")
             
@@ -151,7 +153,7 @@ class AudioEngineService:
                 # Bù trừ sai số của Windows: Chỉ ngủ phần thời gian còn lại
                 if sleep_duration > 0:
                     await asyncio.sleep(sleep_duration)
-             
+            
             #Gui stop   
             stop_data = AudioControlServer(
                 action="stop",
@@ -170,5 +172,15 @@ class AudioEngineService:
             ).model_dump()
             error_payload = PayloadBuilder.build_json(data=error_msg)
             publish_cb(control_topic, error_payload, qos=1)
+    
+    async def finish_session(self, device_id: str, publish_cb, session_id: str):
+        """Esp32 ve IDLE"""
+        control_topic = MqttTopics.audio_control(device_id)
+        idle_data = AudioControlServer(
+            action="idle",
+            session_id=session_id
+        ).model_dump()
+        idle_payload = PayloadBuilder.build_json(data=idle_data)
+        publish_cb(control_topic, idle_payload, qos=1)
 
 audio_engine_service = AudioEngineService()

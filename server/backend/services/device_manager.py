@@ -19,11 +19,11 @@ class DeviceManagerService:
     async def process_lifecycle_status(self, device_id: str, action: str, payload: dict, publish_cb: Callable):
         status = payload.get("status")
         timestamp = payload.get("timestamp")
-       
+
         if status == "online":
             self._active_devices[device_id] = {"status": "online", "last_seen": timestamp}
             logger.info(f"Thiet bi {device_id} vua ket noi. {len(self._active_devices)} thiet bi dang ket noi")
-           
+            
             # Phat lenh dong bo gio xuong ESP32
             time_payload = PayloadBuilder.build_json({"timestamp": int(time.time())})
             time_topic = MqttTopics.command(device_id, "time_sync")

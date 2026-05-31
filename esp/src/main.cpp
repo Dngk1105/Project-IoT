@@ -12,6 +12,7 @@
 #include "button_core.h"
 #include "audio_psram.h"
 #include "local_storage.h"
+#include "cJSON.h"
 
 static const char *TAG = "MAIN_APP";
 
@@ -88,15 +89,37 @@ void app_logic_task(void *pvParameters) {
         switch (current_state){
             case STATE_IDLE:
                 if (time_core_is_synced()){
-                    // 1. Kiểm tra lịch báo thức offline (từ LittleFS)
-                    // if (local_storage_check_alarm_time()) {
-                    //      request_app_state(STATE_ALARMING);
-                    // }
-                    
-                    // 2. Định kỳ bắn Telemetry (Chỉ cần có MQTT)
-                    // if (net_state == SYS_MQTT_OK && time_to_send_telemetry) {
-                    //      telemetry_send_metrics();
-                    // }
+                    esp_calendar_event_t next_event;
+                    if (local_storage_get_next_event(&next_event)){
+                        uint32_t current_time = get_current_unix_timestamp();
+
+                        // bat dau som hon mot chut
+                        if (current_time >= (next_event.timestamp - 5)){
+                            ESP_LOGI(TAG, "ĐẾN GIỜ BÁO THỨC! Sự kiện: %s", next_event.msg);
+
+                            // Xin audio 
+                            cJSON *req = cJSON_CreateObject();
+                            cJSON_AddStringToObject(req, "action", "request_tts");
+                            cJSON_AddStringToObject(req, "event_id", next_event.id);
+
+                            // tạo session id 
+                            char session_id[32];
+                            snprintf(session_id, sizeof(session_id), "ss_%lu", current_time);
+                            cJSON_AddStringToObject(req, "session_id", session_id);
+
+                            char *req_str = cJSON_PrintUnformatted(req);
+                            if (req_str) {
+                                char topic[80];
+                                snprintf(topic, sizeof(topic), "iot_schedule/%s/audio/request", mqtt_get_device_id());
+                                mqtt_handler_publish(topic, req_str, strlen(req_str), 1, 0, 1);
+                                free(req_str);
+                            }
+                            cJSON_Delete(req);
+
+                            local_storage_remove_event(next_event.id);
+                            request_app_state(STATE_WAIT_SERVER);
+                        }
+                    }
                 }
 
                 break;
@@ -112,8 +135,10 @@ void app_logic_task(void *pvParameters) {
             case STATE_LISTENING:
                 // Kích hoạt ESP-SR (WakeNet/MultiNet)
                 ESP_LOGI(TAG, "Đang chờ người dùng ra lệnh...");
-                // Nếu nghe được "Snooze" -> local_storage_update() -> Gửi Event QoS1 -> Về IDLE
-                // Nếu câu phức tạp -> request_app_state(STATE_STREAM_UP)
+                if (!audio_is_streaming()) {
+                    ESP_LOGI(TAG, "Bật Mic INMP441, bắt đầu lắng nghe người dùng...");
+                    audio_start_streaming(true);
+                }
                 break;
 
             case STATE_STREAM_UP:

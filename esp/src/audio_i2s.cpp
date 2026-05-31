@@ -308,6 +308,7 @@ esp_err_t audio_i2s_init(void) {
 void audio_start_streaming(bool enable) {
     if (enable && !is_streaming) {
         is_streaming = true;
+        
         xTaskCreatePinnedToCore(audio_stream_task, "Audio_Stream_Up",
                                 TASK_STACK_AUDIO, NULL, TASK_PRIO_AUDIO,
                                 &audio_stream_task_handle, 1);
@@ -372,6 +373,13 @@ static void audio_playback_task(void *pvParameters) {
             psram_write_pos = 0; 
             is_playback_finished = false; 
             ESP_LOGI("PLAYBACK", "Đã phát xong luồng TTS, kho PSRAM đã trống.");
+
+            if (get_app_state() != STATE_IDLE) {
+                ESP_LOGI(TAG, "Kích hoạt Mic để nghe lệnh phản hồi...");
+                request_app_state(STATE_LISTENING);
+            } else {
+                ESP_LOGI(TAG, "Server đã chốt phiên giao dịch. Không bật Mic, tiếp tục ngủ.");
+            }
             
         } else {
             // CHẾ ĐỘ CHỜ (KHI KHÔNG CÓ LỆNH PHÁT)

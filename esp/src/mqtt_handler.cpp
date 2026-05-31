@@ -300,7 +300,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
                                             ESP_LOGI(TAG, "Server báo: Chuẩn bị phát luồng TTS...");
                                             extern void audio_psram_init(void);
                                             audio_psram_init();
-
+                                            request_app_state(STATE_STREAM_DOWN);
                                         } 
                                         
                                         else if (strcmp(action->valuestring, "stop") == 0) {
@@ -308,9 +308,16 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
                                             audio_ringbuf_finish();
                                         }
 
+                                        else if (strcmp(action->valuestring, "idle") == 0) {
+                                            ESP_LOGI(TAG, "Luong thoai ket thuc ve IDLE");
+                                            audio_start_streaming(false); 
+                                            request_app_state(STATE_IDLE);
+                                        }
                                         else if (strcmp(action->valuestring, "error") == 0) {
                                             ESP_LOGE(TAG, "Server báo lỗi TTS!");
                                             audio_ringbuf_finish();
+                                            audio_start_streaming(false);
+                                            request_app_state(STATE_IDLE);
                                         } 
                                         else {
                                             ESP_LOGW(TAG, "Action không hỗ trợ: %s", action->valuestring);

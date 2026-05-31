@@ -10,7 +10,7 @@ class AudioRequestESP32(BaseModel):
 
 class AudioControlServer(BaseModel):
     """Nội dung bên trong 'data'"""
-    action: Literal["start", "stop", "error"]
+    action: Literal["start", "stop", "error", "idle"]
     session_id: str
     chunk_count: Optional[int] = Field(None, description="Tổng số chunk sẽ gửi")
     sample_rate: Optional[int] = Field(16000, description="Tần số lấy mẫu")
