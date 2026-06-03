@@ -3,13 +3,20 @@ import asyncio
 import uuid
 import time
 import json
+import numpy as np
+from datetime import datetime
 from integrations.stt_client import stt_api
 from integrations.llm_client import llm_api
 from integrations.tts_client import tts_api
 from schemas.audio import AudioControlServer, AudioRequestESP32
+from schemas.calendar import CalendarEventCreate, CalendarEventUpdate
 from core.prompts.system_prompts import get_assistant_prompt
 from core.mqtt_protocol import MqttTopics, PayloadBuilder
 from core.mqtt_client import publish_message, fast_mqtt
+from core.database import AsyncSessionLocal
+from core.scheduler import push_sync_to_device
+import crud.calendar as crud_calendar
+from services.voice_agent import voice_agent
 
 logger = get_logger(__name__, "audio_pipeline")
 
@@ -17,7 +24,7 @@ class AudioEngineService:
     def __init__(self):
         # Khoi tao buffer, AI,...
         self._audio_buffers = {}
-        pass
+        self._session_context = {}
 
     async def handle_stream(self, device_id: str, action: str, payload: bytes):
         """
@@ -35,8 +42,13 @@ class AudioEngineService:
                     if request.action == "request_tts":
                         logger.info(f"[{device_id}] Yêu cầu TTS - Event: {request.event_id} | Session: {request.session_id}")
                         
-                        # TODO: Truy vấn DB để lấy thông tin sự kiện. Tạm thời dùng text mẫu:
-                        text_to_speak = f"Xin chào, đã đến giờ cho sự kiện {request.session_id}. Mời bạn chuẩn bị."
+                        event_name = "Khong xac dinh"
+                        async with AsyncSessionLocal() as db:
+                            event = await crud_calendar.get_event(db, request.event_id)
+                            if event:
+                                event_name = event.summary
+                                
+                        text_to_speak = f"Xin chào, đã đến giờ cho sự kiện {event_name}. Huynh có chỉ thị gì thêm không?"
                         
                         asyncio.create_task(
                             self.stream_audio_to_device(
@@ -61,8 +73,16 @@ class AudioEngineService:
         audio_data = bytes(self._audio_buffers.get(device_id, b""))
         self._audio_buffers[device_id] = bytearray()   #reset
 
-        if len(audio_data) < 4000: # Audio qua ngan
+        drop_session = f"drop_{uuid.uuid4().hex[:8]}"
+        audio_np = np.frombuffer(audio_data, dtype=np.int16)
+        max_amplitude = np.max(np.abs(audio_np))
+        
+        if max_amplitude < 500 or len(audio_data) < 4000:
+            logger.warning(f"[{device_id}] Âm lượng quá bé ({max_amplitude}). Hủy gọi Whisper để tránh ảo giác!")
+            await self.finish_session(device_id, publish_cb, session_id=drop_session, keep_listening = False)
             return
+        
+        session_id = f"chat_{uuid.uuid4().hex[:8]}"
         
         try:
             logger.info(f"[{device_id}] Bắt đầu Xử lí luồng thoại {len(audio_data)} bytes...")
@@ -72,46 +92,22 @@ class AudioEngineService:
             logger.info("Whisper nhan dien giong noi thanh van ban:")
             logger.info(user_text);
             
-            sys_prompt = get_assistant_prompt()
-            llm_raw_response = await llm_api.chat(sys_prompt, user_text)
-            cleaned_response = llm_raw_response.replace('```json', '').replace('```', '').strip()
-            try:
-                # Bóc tách JSON
-                ai_data = json.loads(cleaned_response)
-                
-                intent = ai_data.get("intent", "CHAT")
-                action = ai_data.get("action", "NONE")
-                params = ai_data.get("parameters", {})
-                spoken_text = ai_data.get("spoken_response", "Xin lỗi, tôi không hiểu ý bạn.")
-                
-                logger.info(f"[{device_id}] Phân tích Intent: {intent} | Action: {action} | Params: {params}")
-                
-                session_id = f"chat_{uuid.uuid4().hex[:8]}"                
-                await self.stream_audio_to_device(device_id, spoken_text, publish_cb, session_id)
-                
-                if intent == "CALENDAR":
-                    # TODO: Gọi hàm từ crud_calendar để lưu DB, check trùng lịch...
-                    pass
-                elif intent == "DEVICE":
-                    # TODO: Bắn bản tin MQTT (shadow_desired) xuống ESP32 để bật tắt rơ-le / loa
-                    pass
-                elif intent == "CHAT":
-                    await self.finish_session(device_id, publish_cb, session_id)
-            except json.JSONDecodeError:
-                logger.error(f"[{device_id}] LLM trả về lỗi định dạng JSON: {cleaned_response}")
-                spoken_text = "Hệ thống AI đang gặp lỗi định dạng, vui lòng thử lại sau."
+            spoken_text, require_confirmation = await voice_agent.process_user_intent(device_id, user_text)
+            await self.stream_audio_to_device(device_id, spoken_text, publish_cb, session_id)
+            
+            # Truyen co require_confirmation xuong finish_session de ESP32 biet duong bat lai Mic
+            await self.finish_session(device_id, publish_cb, session_id, keep_listening=require_confirmation)
+            
             
         except Exception as e:
-            logger.error(f"Lỗi Pipeline AI: {e}")
+            logger.error(f"Loi he thong Audio: {e}", exc_info=True)
+            await self.finish_session(device_id, publish_cb, session_id, keep_listening=False)
             
             
     async def stream_audio_to_device(self, device_id: str, text: str, publish_cb, session_id: str = None):
         """
         Truyen audio toi thiet bi
         """
-        if not session_id:
-            session_id = f"tts_{uuid.uuid4().hex[:8]}"
-
         try:
             logger.info(f"[{device_id}] Đang tổng hợp giọng nói (TTS)...")
             
@@ -173,14 +169,52 @@ class AudioEngineService:
             error_payload = PayloadBuilder.build_json(data=error_msg)
             publish_cb(control_topic, error_payload, qos=1)
     
-    async def finish_session(self, device_id: str, publish_cb, session_id: str):
+    
+    
+    async def finish_session(self, device_id: str, publish_cb, session_id: str, keep_listening: bool = False):
         """Esp32 ve IDLE"""
         control_topic = MqttTopics.audio_control(device_id)
         idle_data = AudioControlServer(
             action="idle",
-            session_id=session_id
+            session_id=session_id,
+            keep_listening=keep_listening
         ).model_dump()
         idle_payload = PayloadBuilder.build_json(data=idle_data)
         publish_cb(control_topic, idle_payload, qos=1)
 
+
+    
+    async def _execute_pending_transaction(self, device_id: str, pending_state: dict, publish_cb):
+        """Hàm private xử lý Commit thực sự vào DB/Broker sau khi có xác nhận"""
+        intent = pending_state["intent"]
+        action = pending_state["action"]
+        params = pending_state["params"]
+        if intent == "CALENDAR":
+            async with AsyncSessionLocal() as db:
+                try:
+                    sync_needed = False
+                    if action == "CREATE":
+                        # Validate qua Schema
+                        event_in = CalendarEventCreate(**params)
+                        await crud_calendar.create_event(db, event_in)
+                        sync_needed = True
+                    elif action == "UPDATE":
+                        if "id" in params:
+                            event_update = CalendarEventUpdate(**params)
+                            await crud_calendar.update_event(db, params["id"], event_update)
+                            sync_needed = True
+                    elif action == "DELETE":
+                        if "id" in params:
+                            await crud_calendar.delete_event(db, params["id"])
+                            sync_needed = True
+                            
+                    if sync_needed:
+                        await push_sync_to_device(device_id, db)
+                        logger.info(f"[{device_id}] Commit DB thành công. Bắn Delta Sync (QoS 2).")
+                except Exception as e:
+                    logger.error(f"[{device_id}] Lỗi DB Transaction: {e}")
+                    
+        elif intent == "DEVICE":
+            # Xử lý bắn Device Shadow payload
+            pass
 audio_engine_service = AudioEngineService()

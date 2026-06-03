@@ -14,3 +14,4 @@ class AudioControlServer(BaseModel):
     session_id: str
     chunk_count: Optional[int] = Field(None, description="Tổng số chunk sẽ gửi")
     sample_rate: Optional[int] = Field(16000, description="Tần số lấy mẫu")
+    keep_listening: Optional[bool] = Field(False, description="Co tu dong mo lai mic hay khong")

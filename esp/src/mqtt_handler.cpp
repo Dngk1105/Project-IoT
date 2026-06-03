@@ -83,7 +83,8 @@ static void parse_json_envelope(const char *payload, mqtt_msg_type_t msg_type, c
             ESP_LOGI(TAG, "Dong bo lich hoc, chuyen tiep qua local_storage...");
             bool success = local_storage_sync_schedule(data);
 
-            
+            local_storage_print_cache();
+
             if (resp_topic != NULL && strlen(resp_topic) > 0){
                 cJSON *ack_payload = cJSON_CreateObject();
                 if (success){
@@ -168,8 +169,6 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
             */
             data = cJSON_CreateObject();
             cJSON_AddStringToObject(data, "status", "online");
-            cJSON_AddNumberToObject(data, "timestamp", get_current_unix_timestamp());
-
             char* birth_payload = mqtt_proto_build_standard_payload(data);
             mqtt_handler_publish(status_topic, birth_payload, 0, 1, 1);
             free(birth_payload);
@@ -217,7 +216,10 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
                     strncpy(current_topic, event->topic, copy_len);
                     current_topic[copy_len] = '\0';
                 } 
-                ESP_LOGI(TAG, "MQTT Message Received | Topic: %s |Tổng dung lượng: %d bytes", current_topic, event->total_data_len);
+                char stream_down_topic[80];
+                mqtt_proto_get_audio_down_topic(device_id, stream_down_topic, sizeof(stream_down_topic));
+                if (strcmp(current_topic, stream_down_topic))
+                    ESP_LOGI(TAG, "MQTT Message Received | Topic: %s |Tổng dung lượng: %d bytes", current_topic, event->total_data_len);
 
                // Xử lý theo Sơ đồ Tuần tự
                // Lệnh đồng bộ lịch từ Server
@@ -229,7 +231,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
 
                // Nhận Audio Stream từ Server (TTS)
                 else if (strstr(event->topic, "/audio/stream_down") != NULL) {
-                    ESP_LOGI(TAG, "[STREAM_DOWN] Nhận chunk audio TTS từ Server (%d bytes)", event->data_len);
+                    //ESP_LOGI(TAG, "[STREAM_DOWN] Nhận chunk audio TTS từ Server (%d bytes)", event->data_len);
                     current_msg_type = MSG_TYPE_AUDIO_DOWN;
                 }
                 
@@ -266,7 +268,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
                     //Du lieu nhi phan tho, parse vao ring buffer
                     if (event->data_len > 0){
                         audio_psram_feed((const uint8_t*)event->data, event->data_len);
-                        ESP_LOGI(TAG, "Xa %d bytes vao Ringbuffer", event->data_len);
+                        //ESP_LOGI(TAG, "Xa %d bytes vao Ringbuffer", event->data_len);
                     }
                     break;
                 
@@ -300,6 +302,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
                                             ESP_LOGI(TAG, "Server báo: Chuẩn bị phát luồng TTS...");
                                             extern void audio_psram_init(void);
                                             audio_psram_init();
+                                            audio_set_finished(false);
                                             request_app_state(STATE_STREAM_DOWN);
                                         } 
                                         
@@ -311,7 +314,19 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
                                         else if (strcmp(action->valuestring, "idle") == 0) {
                                             ESP_LOGI(TAG, "Luong thoai ket thuc ve IDLE");
                                             audio_start_streaming(false); 
-                                            request_app_state(STATE_IDLE);
+                                            bool keep_listening = false;
+                                            cJSON *keep_item = cJSON_GetObjectItem(data, "keep_listening");
+                                            if (keep_item && cJSON_IsBool(keep_item)) {
+                                                keep_listening = cJSON_IsTrue(keep_item);
+                                            }
+                                            
+                                            if (keep_listening) {
+                                                ESP_LOGI(TAG, "He thong dang cho xac nhan, TU DONG MO LAI MIC!");
+                                                request_app_state(STATE_STREAM_UP); 
+                                            } else {
+                                                ESP_LOGI(TAG, "Chuyen ve IDLE");
+                                                request_app_state(STATE_IDLE);
+                                            }
                                         }
                                         else if (strcmp(action->valuestring, "error") == 0) {
                                             ESP_LOGE(TAG, "Server báo lỗi TTS!");

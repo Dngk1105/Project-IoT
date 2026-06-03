@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from core.logger import get_logger
 from core.mqtt_protocol import MqttTopics, PayloadBuilder
 from core.database import AsyncSessionLocal
+from core.scheduler import push_sync_to_device
 from models.device import Device
 from models.telemetry import Telemetry
 
@@ -17,8 +18,9 @@ class DeviceManagerService:
         
     """Nhan cac goi tin Birth Message va LWT xu li trang thai ket noi cua thiet bi """
     async def process_lifecycle_status(self, device_id: str, action: str, payload: dict, publish_cb: Callable):
-        status = payload.get("status")
-        timestamp = payload.get("timestamp")
+        core_data = payload.get("data", payload)
+        status = core_data.get("status")
+        timestamp = core_data.get("timestamp")
 
         if status == "online":
             self._active_devices[device_id] = {"status": "online", "last_seen": timestamp}
@@ -28,11 +30,13 @@ class DeviceManagerService:
             time_payload = PayloadBuilder.build_json({"timestamp": int(time.time())})
             time_topic = MqttTopics.command(device_id, "time_sync")
             publish_cb(time_topic, time_payload, qos=1)
+            
+            
         
         elif status == "offline":
             if device_id in self._active_devices:
                 self._active_devices[device_id]["status"] = "offline"
-            reason = payload.get("reason", "unknown")
+            reason = core_data.get("reason", "unknown")
             logger.warning(f"Thiết bị {device_id} vừa ngắt kết nối. Lý do: {reason}")
             
         async with AsyncSessionLocal() as session:
@@ -57,6 +61,10 @@ class DeviceManagerService:
                     device.last_seen = datetime.now(timezone.utc)
 
                 await session.commit()
+                
+                if status == "online":
+                    logger.info(f"[{device_id}] Bắt đầu đồng bộ lịch trình xuống ESP32...")
+                    await push_sync_to_device(device_id, session)
             except Exception as e:
                 await session.rollback()
                 logger.error(f"[{device_id}] Lỗi DB khi cập nhật Lifecycle: {e}", exc_info=True)

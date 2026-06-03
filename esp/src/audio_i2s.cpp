@@ -376,6 +376,7 @@ static void audio_playback_task(void *pvParameters) {
 
             if (get_app_state() != STATE_IDLE) {
                 ESP_LOGI(TAG, "Kích hoạt Mic để nghe lệnh phản hồi...");
+                vTaskDelay(pdMS_TO_TICKS(400));
                 request_app_state(STATE_LISTENING);
             } else {
                 ESP_LOGI(TAG, "Server đã chốt phiên giao dịch. Không bật Mic, tiếp tục ngủ.");

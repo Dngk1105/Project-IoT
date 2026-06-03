@@ -16,7 +16,7 @@
  * THÔNG SỐ MQTT BROKER
  * ========================================================================= */
 //#define MQTT_BROKER_URI         "mqtt://192.168.0.102:1883" // IP của Server nội bộ
-#define MQTT_BROKER_URI         "mqtt://192.168.0.100:1883" // IP của Server nội bộ
+#define MQTT_BROKER_URI         "mqtt://192.168.0.102:1883" // IP của Server nội bộ
 // #define MQTT_USERNAME        "admin"                    
 // #define MQTT_PASSWORD        "secret"
 #define MQTT_KEEPALIVE_SEC      10                          // Chu kỳ gửi Pingreq
@@ -51,7 +51,6 @@
 #define AUDIO_BITS_PER_SAMPLE   16      // 16-bit
 #define AUDIO_BUFFER_SIZE       2048    
 #define VAD_THRESHOLD_DB        -40.0f  // Ngưỡng decibel để kích hoạt Voice Activity Detection
-#define VAD_AMPLITUDE_THRESHOLD 80
 
 #define MAX_STEREO_SAMPLES 1024
 #define RINGBUF_SIZE 81920 // 16KB
@@ -61,7 +60,7 @@
 #define PSRAM_BUFFER_MAX 2048 * 1024
 
 // VAD Tuning
-#define VAD_AMPLITUDE_THRESHOLD     80
+#define VAD_AMPLITUDE_THRESHOLD     200
 #define VAD_SILENCE_TIMEOUT_MS      1200     // Sau khi đã nói
 #define VAD_INITIAL_TIMEOUT_MS      5000     // Trước khi nói (timeout ban đầu)
 

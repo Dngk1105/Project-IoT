@@ -1,6 +1,6 @@
-from pydantic import BaseModel, ConfigDict, Field, AwareDatetime, model_validator
+from pydantic import BaseModel, ConfigDict, Field, AwareDatetime, model_validator, field_validator
 from typing import Optional, Literal
-from datetime import datetime
+from datetime import datetime, timezone
 
 # Import Enum từ Model DB của huynh
 from models.calendar import EventSource
@@ -24,6 +24,13 @@ class CalendarEventBase(BaseModel):
             raise ValueError('end_time bắt buộc phải diễn ra sau start_time')
         return self
     
+    @field_validator("start_time", "end_time", mode="before")
+    @classmethod
+    def ensure_timezone(cls, v):
+        if isinstance(v, datetime) and v.tzinfo is None:
+            return v.replace(tzinfo=timezone.utc)
+        return v
+    
 class CalendarEventCreate(CalendarEventBase):
     source: EventSource = EventSource.VOICE_AI
     
@@ -44,6 +51,13 @@ class CalendarEventResponse(CalendarEventBase):
 
     # Cho phép Pydantic đọc thẳng từ Object SQLAlchemy
     model_config = ConfigDict(from_attributes=True)
+    
+    @field_validator("created_at", "updated_at", mode="before")
+    @classmethod
+    def ensure_response_timezone(cls, v):
+        if isinstance(v, datetime) and v.tzinfo is None:
+            return v.replace(tzinfo=timezone.utc)
+        return v
 
 
 class EventLiteESP32(BaseModel):
@@ -59,7 +73,7 @@ class EventLiteESP32(BaseModel):
     def validate_future_timestamp(self) -> 'EventLiteESP32':
         """Đảm bảo không gửi lịch trong quá khứ xuống làm vi điều khiển bị nhiễu loạn"""
         # Cho phép trễ tối đa 15 phút (900 giây) để bù trừ độ trễ mạng
-        current_unix = int(datetime.now().timestamp())
+        current_unix = int(datetime.now(timezone.utc).timestamp())
         if self.t < (current_unix - 900):
             raise ValueError(f'Timestamp {self.t} đã là quá khứ. Không hợp lệ cho MCU.')
         return self

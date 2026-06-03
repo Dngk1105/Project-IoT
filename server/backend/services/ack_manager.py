@@ -22,7 +22,8 @@ class AckManagerService:
             if status == "success":
                 logger.info(f"[{device_id}] Ghi tkb thanh cong vao Flash (Correlation: {correlation_id})")
                 
-                synced_ids = PENDING_ACKS.pop(correlation_id, [])
+                if correlation_id in PENDING_ACKS:
+                    synced_ids = PENDING_ACKS.pop(correlation_id, [])
                 
                 if synced_ids:
                     await self._update_shadow_db(device_id, synced_ids)

@@ -22,16 +22,55 @@ fast_mqtt = FastMQTT(config=mqtt_config)
 """Phân rã chuỗi quy chuẩn: iot_schedule/<device_id>/<category>/<action>"""
 def parse_topic (topic: str):
     parts = topic.split("/")
-    if len(parts) >= 4 and parts[0] == "iot_schedule":
-        return parts[1], parts[2], "/".join(parts[3:])
-    return None, None, None
+    if len(parts) < 3 or parts[0] != "iot_schedule":
+        return None, None, None
+    device_id = parts[1]
+    category = parts[2]
+    action = parts[3] if len(parts) >= 4 else "none"
+    return device_id, category, action
 
-def publish_message(topic: str, payload: dict, qos: int = 1, retain: bool = False):
+def get_target_service(category: str):
+    """
+    Mapping category -> service handler
+    """
+    if category in ("status", "telemetry", "shadow"):
+        from services.device_manager import device_manager_service
+        
+        service_map = {
+            "status": device_manager_service.process_lifecycle_status,
+            "telemetry": device_manager_service.process_hardware_telemetry,
+            "shadow": device_manager_service.process_device_shadow
+        }
+        return service_map.get(category)
+
+    elif category == "events":
+        from services.event_processor import event_processor_service
+        return event_processor_service.process_event
+
+    elif category == "audio":
+        from services.audio_engine import audio_engine_service
+        return audio_engine_service.handle_stream
+
+    elif category == "ack":
+        from services.ack_manager import ack_manager_service
+        return ack_manager_service.process_ack
+
+    return None
+
+def publish_message(topic: str, payload: dict, qos: int = 1, retain: bool = False, **kwargs):
     """Hàm bọc (Wrapper) để tự động chuyển dict thành JSON và in log"""
     try:
         json_payload = json.dumps(payload)
-        fast_mqtt.publish(message_or_topic = topic, payload= json_payload, qos=qos, retain=retain)
+        fast_mqtt.publish(
+            message_or_topic = topic, 
+            payload= json_payload, 
+            qos=qos, 
+            retain=retain,
+            **kwargs
+        )
         logger.info(f"[GỬI] Topic: {topic} | Payload: {json_payload}")
+        if kwargs:
+            logger.debug(f"      LĐính kèm MQTTv5 Props: {kwargs}")
     except Exception as e:
         logger.error(f"Lỗi khi gửi bản tin MQTT: {e}")
 
@@ -63,19 +102,7 @@ async def on_message(client: MQTTClient, topic: str, payload: bytes, qos: int, p
     if category == "commands" or action == "stream_down" or action == "control":
         return
     
-    target_service = None
-    if category == "status" or category == "telemetry" or category == "shadow":
-        from services.device_manager import device_manager_service
-        target_service = getattr(device_manager_service, f"process_{category}" if category == "shadow" else f"process_lifecycle_status" if category == "status" else "process_hardware_telemetry")
-    elif category == "events":
-        from services.event_processor import event_processor_service
-        target_service = event_processor_service.process_event
-    elif category == "audio":
-        from services.audio_engine import audio_engine_service
-        target_service = audio_engine_service.handle_stream
-    elif category == "ack":
-        from services.ack_manager import ack_manager_service
-        target_service = ack_manager_service.process_ack
+    target_service = get_target_service(category)
 
     if not target_service:
         logger.warning(f"Category khong co trong danh muc co the xu li: {category}")

@@ -39,6 +39,10 @@ void mqtt_proto_get_audio_control_topic(const char* device_id, char* out_buffer,
 
 char* mqtt_proto_build_standard_payload(cJSON* data_obj) {
     cJSON* root = cJSON_CreateObject();
+    if (!root){
+        cJSON_Delete(data_obj);
+        return NULL;
+    }
     
     // header
     char msg_id[24];
@@ -53,7 +57,7 @@ char* mqtt_proto_build_standard_payload(cJSON* data_obj) {
         cJSON_AddItemToObject(root, "data", cJSON_CreateObject());
     }
     char* payload_str = cJSON_PrintUnformatted(root);
-        cJSON_Delete(root);
+    cJSON_Delete(root);
     
     // Phai Delete sau khi dung
     return payload_str; 

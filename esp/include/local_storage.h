@@ -53,6 +53,11 @@ bool local_storage_get_next_event(esp_calendar_event_t *out_event);
  */
 void local_storage_remove_event(const char* event_id);
 
+/**
+ * @brief Debug sự kiện đang diễn lưu trong RAM
+ */
+void local_storage_print_cache(void);
+
 
 #ifdef __cplusplus
 }

@@ -116,6 +116,8 @@ void local_storage_init(){
                 event_count++;
             }
             ESP_LOGI(TAG, "Nap %d su kien vao RAM Cache.", event_count);
+
+            local_storage_print_cache();
         }
         if (root) cJSON_Delete(root);
         free(json_str);
@@ -211,6 +213,22 @@ void local_storage_remove_event(const char* event_id) {
             event_count--;
             save_cache_to_flash();
             return;
+        }
+    }
+}
+
+void local_storage_print_cache(void) {
+    ESP_LOGI(TAG, "Sự kiện trong RAM %d", event_count);
+    if (event_count == 0) {
+        ESP_LOGI(TAG, "Kho lưu trữ đang trống rỗng.");
+    } else {
+        for (int i = 0; i < event_count; i++) {
+            ESP_LOGI(TAG, "[%d] ID: %s | Time: %lu | Action: %s | Msg: %s",
+                    i, 
+                    event_cache[i].id, 
+                    (unsigned long)event_cache[i].timestamp, 
+                    action_enum_to_str(event_cache[i].action), 
+                    event_cache[i].msg);
         }
     }
 }

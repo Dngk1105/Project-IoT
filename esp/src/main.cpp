@@ -134,7 +134,6 @@ void app_logic_task(void *pvParameters) {
 
             case STATE_LISTENING:
                 // Kích hoạt ESP-SR (WakeNet/MultiNet)
-                ESP_LOGI(TAG, "Đang chờ người dùng ra lệnh...");
                 if (!audio_is_streaming()) {
                     ESP_LOGI(TAG, "Bật Mic INMP441, bắt đầu lắng nghe người dùng...");
                     audio_start_streaming(true);
@@ -161,8 +160,8 @@ void app_logic_task(void *pvParameters) {
                 // Đang ghi File. Cực kỳ nhạy cảm, không được làm việc khác.
                 // local_storage_save_json();
                 // Dong bo time voi server
-                ESP_LOGI(TAG, "Đã ghi xong lịch học. Quay về IDLE.");
-                request_app_state(STATE_IDLE);
+                //ESP_LOGI(TAG, "Đã ghi xong lịch học. Quay về IDLE.");
+                //request_app_state(STATE_IDLE);
                 break;
         }
 

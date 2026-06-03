@@ -1,6 +1,7 @@
 import time
 import uuid
 from typing import Dict, Any
+import json
 
 PROJECT_PREFIX = "iot_schedule"
 
@@ -49,11 +50,24 @@ class PayloadBuilder:
     @staticmethod
     def build_json(data: Dict[str, Any], version: str = "1.0") -> dict:
         """
-        Gói dữ liệu vào Envelope có msg_id để tracking và timestamp để ESP32 đối chiếu.
+        Gói dữ liệu vào Envelope có msg_id tự động sinh và timestamp.
         """
         return {
-            "msg_id": f"msg_{uuid.uuid4().hex[:12]}",  # Tạo mã ID ngẫu nhiên không trùng lặp
-            "timestamp": int(time.time()),             # Đóng dấu thời gian Server
+            "msg_id": f"msg_{uuid.uuid4().hex[:12]}",  
+            "timestamp": int(time.time()),             
             "v": version,
-            "data": data                               # Dữ liệu lõi được nhét vào đây
+            "data": data                               
+        }
+
+    @staticmethod
+    def build_delta_sync(msg_id: str, data: Dict[str, Any], version: str = "1.0") -> dict:
+        """
+        Tạo payload chuyên dụng cho gói Delta Sync (đồng bộ lịch).
+        Trả về kiểu 'dict' để hàm publish_message tự động dumps ra chuỗi.
+        """
+        return {
+            "msg_id": msg_id,
+            "timestamp": int(time.time()),
+            "v": version,
+            "data": data  
         }

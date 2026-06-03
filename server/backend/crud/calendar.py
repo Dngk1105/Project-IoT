@@ -1,6 +1,6 @@
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta, UTC
 from typing import List, Optional
 
 from models.calendar import CalendarEvent, EventSource
@@ -83,6 +83,19 @@ async def get_events_in_range(db: AsyncSession, start_dt: datetime, end_dt: date
         logger.error(f"Loi lay danh sach su kien: {str(e)}")
         return []
     
+async def get_events_in_range_ordered(db: AsyncSession, start_dt: datetime, end_dt: datetime) -> List[CalendarEvent]:
+    """Lấy sự kiện trong khoảng thời gian và sắp xếp theo giờ"""
+    try:
+        stmt = select(CalendarEvent).where(
+            CalendarEvent.is_cancelled == False,
+            CalendarEvent.start_time < end_dt, 
+            CalendarEvent.end_time > start_dt
+        ).order_by(CalendarEvent.start_time)
+        result = await db.execute(stmt)
+        return list(result.scalars().all())
+    except Exception as e:
+        logger.error(f"Lỗi khi lấy sự kiện có sắp xếp: {str(e)}")
+        return []    
     
 async def update_event(db: AsyncSession, event_id: str, event_in: CalendarEventUpdate) -> Optional[CalendarEvent]:
     db_event = await get_event(db, event_id)
@@ -125,7 +138,7 @@ async def delete_event(db: AsyncSession, event_id: str) -> bool:
     
 async def clear_future_events_by_source(db: AsyncSession, source: EventSource):
     """#bulk delete theo source"""
-    now = datetime.now()
+    now = datetime.now(UTC)
     try:
         stmt = delete(CalendarEvent).where(
             CalendarEvent.source == source,
@@ -141,3 +154,47 @@ async def clear_future_events_by_source(db: AsyncSession, source: EventSource):
         await db.rollback()
         logger.error(f"Loi khi don dep DB: {str(e)}")
         raise e
+
+async def find_free_slots(db: AsyncSession, start_dt: datetime, end_dt: datetime, duration_minutes: int) -> List[dict]:
+    """
+    Tìm các khoảng thời gian trống (Gap) >= duration_minutes.
+    """
+    if start_dt.tzinfo is None:
+        start_dt = start_dt.replace(tzinfo=UTC)
+    if end_dt.tzinfo is None:
+        end_dt = end_dt.replace(tzinfo=UTC)
+        
+    events = await get_events_in_range_ordered(db, start_dt, end_dt)
+    free_slots = []
+    
+    current_time = start_dt
+    
+    for evt in events:
+        if evt.start_time.tzinfo is None:
+            evt.start_time = evt.start_time.replace(tzinfo=UTC)
+        if evt.end_time.tzinfo is None:
+            evt.end_time = evt.end_time.replace(tzinfo=UTC)
+            
+        # Nếu khoảng trống giữa thời điểm hiện tại và sự kiện tiếp theo đủ lớn
+        if evt.start_time > current_time:
+            gap_minutes = (evt.start_time - current_time).total_seconds() / 60
+            if gap_minutes >= duration_minutes:
+                free_slots.append({
+                    "start": current_time,
+                    "end": evt.start_time
+                })
+        
+        # Nhảy con trỏ thời gian tới lúc sự kiện này kết thúc
+        current_time = max(current_time, evt.end_time)
+
+    # Kiểm tra khoảng trống từ sự kiện cuối cùng đến lúc kết thúc (end_dt)
+    if current_time < end_dt:
+        gap_minutes = (end_dt - current_time).total_seconds() / 60
+        if gap_minutes >= duration_minutes:
+            free_slots.append({
+                "start": current_time,
+                "end": end_dt
+            })
+            
+    # Giới hạn trả về 5 slot tốt nhất để LLM không bị ngợp Context
+    return free_slots[:5]

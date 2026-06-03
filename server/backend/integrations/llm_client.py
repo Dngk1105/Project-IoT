@@ -1,5 +1,5 @@
 import google.generativeai as genai
-import logging
+import json
 from integrations.API_GEMINI import GEMINI_API_KEY
 from core.logger import get_logger
 
@@ -9,7 +9,10 @@ genai.configure(api_key=GEMINI_API_KEY)
 
 class LLMClient:
     def __init__(self):
-        self.model = genai.GenerativeModel('gemini-3.1-flash-lite')
+        self.model = genai.GenerativeModel(
+            'gemini-3.1-flash-lite',
+            generation_config={"response_mime_type": "application/json"}
+        )
 
     async def chat(self, system_prompt: str, user_text: str) -> str:
         try:
@@ -18,9 +21,14 @@ class LLMClient:
             
             # Gọi API bất đồng bộ
             response = await self.model.generate_content_async(full_prompt)
-            return response.text
+            return json.loads(response.text)
+        except json.JSONDecodeError:
+            logger.error("LLM khong tra ve JSON hop le", exc_info=True)
+            return {"intent": "CHAT", "action": "NONE", "spoken_response": "Xin loi, de xu li thong tin bi loi."}
         except Exception as e:
-            logger.error(f"Lỗi khi gọi LLM Gemini: {e}", exc_info=True)
-            return "Xin lỗi, tôi đang gặp sự cố mạng, không thể suy nghĩ lúc này."
+            logger.error(f"Loi LLM Gemini: {e}", exc_info=True)
+            return {"intent": "CHAT", "action": "NONE", "spoken_response": "Xin loi, de dang mat ket noi mang."}
+
+llm_api = LLMClient()
 
 llm_api = LLMClient()
