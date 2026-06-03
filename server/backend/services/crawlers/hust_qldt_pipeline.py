@@ -1,14 +1,18 @@
 import asyncio
+import hashlib
+from dateutil.rrule import rrulestr
+import unicodedata
 from playwright.async_api import async_playwright
 from pathlib import Path
 from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
 import json
 import aiofiles
+from sqlalchemy import select
 
 from core.logger import get_logger
 from core.database import AsyncSessionLocal
-from models.calendar import EventSource
+from models.calendar import EventSource, CalendarEvent
 from schemas.calendar import CalendarEventCreate
 from crud.calendar import create_event, clear_future_events_by_source
 
@@ -18,33 +22,35 @@ STATE_FILE = Path(__file__).parent / "hust_qldt_state.json"
 TARGET_URL = "https://qldt.hust.edu.vn/students/learn/timetable"
 API_KEYWORD = "query-student-timetable-in-range"
 TZ = ZoneInfo("Asia/Ho_Chi_Minh")
+ANCHOR_DATE = datetime(2026, 2, 23, tzinfo=TZ)
+ANCHOR_WEEK = 25
 
 # Bảng Map Kíp và Tiết
-TIET_START_MAP = {1: time(6, 45), 
-                  2: time(7, 30), 
-                  3: time(8, 25), 
-                  4: time(9, 20), 
-                  5: time(10, 15), 
-                  6: time(11, 0), 
-                  7: time(12, 30), 
-                  8: time(13, 15), 
-                  9: time(14, 10), 
-                  10: time(15, 5), 
-                  11: time(16, 0), 
-                  12: time(16, 45)
+TIET_START_MAP = {  1: time(6, 45), 
+                    2: time(7, 30), 
+                    3: time(8, 25), 
+                    4: time(9, 20), 
+                    5: time(10, 15), 
+                    6: time(11, 0), 
+                    7: time(12, 30), 
+                    8: time(13, 15), 
+                    9: time(14, 10), 
+                    10: time(15, 5), 
+                    11: time(16, 0), 
+                    12: time(16, 45)
                 }
-TIET_END_MAP =  {1: time(7, 30), 
-                 2: time(8, 15), 
-                 3: time(9, 10), 
-                 4: time(10, 5), 
-                 5: time(11, 0), 
-                 6: time(11, 45), 
-                 7: time(13, 15), 
-                 8: time(14, 0), 
-                 9: time(14, 55), 
-                 10: time(15, 50), 
-                 11: time(16, 45), 
-                 12: time(17, 30)
+TIET_END_MAP =  {   1: time(7, 30), 
+                    2: time(8, 15), 
+                    3: time(9, 10), 
+                    4: time(10, 5), 
+                    5: time(11, 0), 
+                    6: time(11, 45), 
+                    7: time(13, 15), 
+                    8: time(14, 0), 
+                    9: time(14, 55), 
+                    10: time(15, 50), 
+                    11: time(16, 45), 
+                    12: time(17, 30)
                 }
 KIP_MAP =   {"Kíp 1": 
                 {
@@ -134,118 +140,230 @@ async def fetch_raw_data():
             return None
         finally:
             await browser.close()
-            
-async def parse_and_load(json_data: str):
+
+def _remove_accents(input_str: str) -> str:
+    # xoa dau tieng viet de loc tu khoa chuan xac
+    nfkd_form = unicodedata.normalize('NFKD', input_str)
+    return u"".join([c for c in nfkd_form if not unicodedata.combining(c)])
+
+def _gen_hust_id(class_id: str, dt_obj: datetime, suffix: str = "") -> str:
+    """Hàm tạo ID cố định và duy nhất cho từng tiết học HUST"""
+    raw_str = f"{class_id}_{dt_obj.isoformat()}_{suffix}"
+    hash_str = hashlib.md5(raw_str.encode()).hexdigest()[:16]
+    return f"hust_{class_id}_{hash_str}"
+
+def _decode_time_code(code_str: str):
+    """Giải mã cấu trúc SIS: Ví dụ '514' -> (Thứ 5, Tiết 4)"""
+    code = int(code_str)
+    weekday = code // 100       # Ví dụ: 5
+    ca_tiet = code % 100        # Ví dụ: 14
+    ca = ca_tiet // 10          # Ca 1 (Sáng) hoặc Ca 2 (Chiều)
+    tiet_trong_ca = ca_tiet % 10 
+    real_tiet = (ca - 1) * 6 + tiet_trong_ca  # Quy đổi ra tiết chuẩn 1-12
+    return weekday, real_tiet
+
+async def parse_and_load(json_data: list):
     success_count = 0
+    now = datetime.now(TZ)
+    
+    # loc hoc ky moi nhat de loai bo sach mon hoc tu cac nam truoc
+    all_semesters = [str(item.get("semester")) for item in json_data if item.get("semester")]
+    current_semester = max(all_semesters) if all_semesters else ""
+    
+    semester_anchors = {}
+    for item in json_data:
+        sem = item.get("semester")
+        if not sem: continue
+        for cal in (item.get("_calendars") or []):
+            st_ms = cal.get("_startSemesterDate", 0)
+            st_wk = cal.get("_startSemesterWeek", 0)
+            if st_ms > 0 and st_wk > 0:
+                semester_anchors[sem] = (st_ms, st_wk)
+                break
+                
     async with AsyncSessionLocal() as db:
         try:
-            #Xoa lich cu truoc khi nap lich moi
-            logger.info("Dang don dep lich cu cua HUST de chuan bi ghi de...")
-            await clear_future_events_by_source(db, EventSource.HUST_CTT)
+            logger.info("Dang quet HUST QLDT de dong bo Delta...")
             
-            #parse du lieu
+            stmt = select(CalendarEvent).where(CalendarEvent.source == EventSource.HUST_CTT)
+            result = await db.execute(stmt)
+            existing_events = {ev.id: ev for ev in result.scalars().all()}
+            scraped_events = {}
+
             for item in json_data:
-                class_id = item.get("classId", "Unknown")
+                sem = str(item.get("semester", ""))
+                # bo qua neu khong phai hoc ky hien tai
+                if sem != current_semester:
+                    continue
+                
                 course_name = item.get("courseName", "Khong ten")
+                norm_name = _remove_accents(course_name.lower())
+                if any(kw in norm_name for kw in ["quoc phong", "duong loi"]):
+                    logger.debug(f"Da bo qua mon blacklist: {course_name}")
+                    continue
+                
+                class_id = item.get("classId", "Unknown")
+
+                anchor_ms, anchor_wk = semester_anchors.get(sem, (0, 0))
+                if anchor_ms == 0:
+                    anchor_ms = datetime(2026, 2, 23, tzinfo=TZ).timestamp() * 1000
+                    anchor_wk = 25
+                anchor_date = datetime.fromtimestamp(anchor_ms / 1000.0, tz=TZ)
+
                 teachers = item.get("_teachers") or []
                 teacher_name = teachers[0]["fullName"] if teachers else "Chua phan cong"
                 
                 base_summary = f"[{class_id}] {course_name}"
                 base_desc = f"Ma HP: {item.get('courseId')}\nGV: {teacher_name}\nLop: {item.get('notes', '')}"
                 
-                #Lich thi
                 for exam in (item.get("_examInfo") or []):
                     exam_timestamp = exam.get("examDate", -1) / 1000.0
                     if exam_timestamp <= 0: continue
                     
                     exam_date = datetime.fromtimestamp(exam_timestamp, tz=TZ)
-                    session = exam.get("session", "Kíp 1")
-                    kip_times = KIP_MAP.get(session, KIP_MAP["Kíp 1"])
+                    session_name = exam.get("session", "Kíp 1")
+                    kip_times = KIP_MAP.get(session_name, KIP_MAP["Kíp 1"])
+                    start_dt = datetime.combine(exam_date.date(), kip_times["start"], tzinfo=TZ)
+                    end_dt = datetime.combine(exam_date.date(), kip_times["end"], tzinfo=TZ)
                     
-                    exam_event = CalendarEventCreate(
-                        summary=f"THI CUOI KY: {base_summary}",
-                        description=f"Kip thi: {session}\n{base_desc}",
-                        location=exam.get("place", "Chua xep phong"),
-                        start_time=datetime.combine(exam_date.date(), kip_times["start"], tzinfo=TZ),
-                        end_time=datetime.combine(exam_date.date(), kip_times["end"], tzinfo=TZ),
-                        is_recurring=False,
-                        source=EventSource.HUST_CTT
-                    )
-                    await create_event(db, exam_event)
+                    event_id = _gen_hust_id(class_id, start_dt, "EXAM")
+                    exam_place = exam.get("place", "Chua xep")
+                    
+                    if event_id in scraped_events: 
+                        existing_evt = scraped_events[event_id]
+                        if exam_place and exam_place not in existing_evt.location:
+                            existing_evt.location += f", {exam_place}"
+                        continue
+                        
+                    if event_id in existing_events:
+                        evt = existing_events[event_id]
+                        evt.is_cancelled = False
+                        evt.summary = f"THI CUOI KY: {base_summary}"
+                        evt.start_time = start_dt
+                        evt.end_time = end_dt
+                        evt.location = exam_place
+                    else:
+                        evt = CalendarEvent(id=event_id, summary=f"THI CUOI KY: {base_summary}", description=f"Kip thi: {session_name}\n{base_desc}", location=exam_place, start_time=start_dt, end_time=end_dt, source=EventSource.HUST_CTT, is_cancelled=False)
+                        db.add(evt)
+                    scraped_events[event_id] = evt
                     success_count += 1
                 
-                #Lich nghi & Hoc bu
                 canceled_dates = set()
                 for report in (item.get("_absentReport") or []):
                     absent_ms = report.get("absentDate", -1)
                     if absent_ms > 0:
                         dt_cancel = datetime.fromtimestamp(absent_ms / 1000.0, tz=TZ).date()
                         canceled_dates.add(dt_cancel)
-                        logger.info(f"Phat hien lich nghi: {course_name} ngay {dt_cancel}")
 
                     replaced_ms = report.get("replacedDate", -1)
                     if replaced_ms > 0:
                         dt_makeup = datetime.fromtimestamp(replaced_ms / 1000.0, tz=TZ).date()
                         rep_from, rep_to = report.get("replacedFrom", 1), report.get("replacedTo", 4)
                         
-                        makeup_event = CalendarEventCreate(
-                            summary=f"HOC BU: {base_summary}",
-                            description=f"Hoc bu cho ngay {dt_cancel.strftime('%d/%m')}\n{base_desc}",
-                            location=report.get("replacedPlace", "Chua xep phong"),
-                            start_time=datetime.combine(dt_makeup, TIET_START_MAP.get(rep_from, time(6, 45)), tzinfo=TZ),
-                            end_time=datetime.combine(dt_makeup, TIET_END_MAP.get(rep_to, time(11, 45)), tzinfo=TZ),
-                            is_recurring=False,
-                            source=EventSource.HUST_CTT
-                        )
-                        await create_event(db, makeup_event)
+                        start_dt = datetime.combine(dt_makeup, TIET_START_MAP.get(rep_from, time(6, 45)), tzinfo=TZ)
+                        end_dt = datetime.combine(dt_makeup, TIET_END_MAP.get(rep_to, time(11, 45)), tzinfo=TZ)
+                        event_id = _gen_hust_id(class_id, start_dt, "MAKEUP")
+                        
+                        if event_id in scraped_events: continue
+                        if event_id in existing_events:
+                            evt = existing_events[event_id]
+                            evt.is_cancelled = False
+                            evt.start_time = start_dt
+                            evt.end_time = end_dt
+                            evt.location = report.get("replacedPlace", "Chua xep")
+                        else:
+                            evt = CalendarEvent(id=event_id, summary=f"HOC BU: {base_summary}", description=f"Hoc bu cho {dt_cancel.strftime('%d/%m')}\n{base_desc}", location=report.get("replacedPlace", "Chua xep"), start_time=start_dt, end_time=end_dt, source=EventSource.HUST_CTT, is_cancelled=False)
+                            db.add(evt)
+                        scraped_events[event_id] = evt
                         success_count += 1
                 
-                #Lich dinh ki
-                for cal in (item.get("_calendars") or []):
-                    weeks = cal.get("weeks") or []
-                    start_sem_ms = cal.get("_startSemesterDate", 0)
-                    if not weeks or start_sem_ms == 0: continue
-
-                    day = cal.get("day", 2)
-                    t_from, t_to = cal.get("from", 1), cal.get("to", 4)
-                    start_sem_date = datetime.fromtimestamp(start_sem_ms / 1000.0, tz=TZ).date()
-                    day_offset = (day - 2) if day != 1 else 6 
-
-                    valid_dates = []
-                    for w in sorted(weeks):
-                        class_date = start_sem_date + timedelta(days=(w - cal.get("_startSemesterWeek", 0)) * 7 + day_offset)
-                        if class_date not in canceled_dates:
-                            valid_dates.append((w, class_date))
-
-                    if not valid_dates: continue
-
-                    groups, curr_group = [], [valid_dates[0]]
-                    for i in range(1, len(valid_dates)):
-                        if valid_dates[i][0] == curr_group[-1][0] + 1: curr_group.append(valid_dates[i])
-                        else: groups.append(curr_group); curr_group = [valid_dates[i]]
-                    groups.append(curr_group)
-
-                    for group in groups:
-                        first_date = group[0][1]
-                        rrule_str = f"FREQ=WEEKLY;COUNT={len(group)};BYDAY={DAY_RRULE_MAP.get(day, 'MO')}"
+                calendar_info = item.get("calendarInfo", "").strip()
+                
+                if calendar_info:
+                    blocks = calendar_info.strip(';').split(';')
+                    for block in blocks:
+                        if not block: continue
+                        tokens = block.split(',')
+                        if len(tokens) < 4: continue
                         
-                        event = CalendarEventCreate(
-                            summary=base_summary,
-                            description=f"Tuan {group[0][0]} den {group[-1][0]}\n{base_desc}",
-                            location=cal.get("place", "Chua xep phong"),
-                            start_time=datetime.combine(first_date, TIET_START_MAP.get(t_from, time(6, 45)), tzinfo=TZ),
-                            end_time=datetime.combine(first_date, TIET_END_MAP.get(t_to, time(11, 45)), tzinfo=TZ),
-                            is_recurring=True,
-                            rrule=rrule_str,
-                            source=EventSource.HUST_CTT
-                        )
-                        await create_event(db, event)
-                        success_count += 1
-            logger.info(f"Hoan tat dong bo! Da nap {success_count} su kien vao Database.")    
+                        start_code, end_code = tokens[1], tokens[2]
+                        room = tokens[-1]
+                        week_tokens = tokens[3:-1]
+                        
+                        weeks = set()
+                        for wt in week_tokens:
+                            if '-' in wt:
+                                s, e = map(int, wt.split('-'))
+                                weeks.update(range(s, e + 1))
+                            elif wt.isdigit():
+                                weeks.add(int(wt))
+                                
+                        weekday, start_tiet = _decode_time_code(start_code)
+                        _, end_tiet = _decode_time_code(end_code)
+                        
+                        for w in sorted(weeks):
+                            class_date = anchor_date + timedelta(weeks=(w - anchor_wk), days=(weekday - 2))
+                            if class_date.date() in canceled_dates: continue
+                                
+                            start_dt = datetime.combine(class_date.date(), TIET_START_MAP.get(start_tiet, time(6, 45)), tzinfo=TZ)
+                            end_dt = datetime.combine(class_date.date(), TIET_END_MAP.get(end_tiet, time(11, 45)), tzinfo=TZ)
+                            event_id = _gen_hust_id(class_id, start_dt, "REGULAR")
+                            
+                            if event_id in scraped_events: continue
+                            if event_id in existing_events:
+                                evt = existing_events[event_id]
+                                evt.is_cancelled = False
+                                evt.location = room
+                            else:
+                                evt = CalendarEvent(id=event_id, summary=base_summary, description=f"Tuan {w}\n{base_desc}", location=room, start_time=start_dt, end_time=end_dt, source=EventSource.HUST_CTT, is_cancelled=False)
+                                db.add(evt)
+                            scraped_events[event_id] = evt
+                            success_count += 1
+                else:
+                    for cal in (item.get("_calendars") or []):
+                        weeks = cal.get("weeks") or []
+                        start_sem_ms = cal.get("_startSemesterDate", 0)
+                        start_sem_wk = cal.get("_startSemesterWeek", 0)
+                        
+                        if start_sem_ms == 0: start_sem_ms = anchor_ms
+                        if start_sem_wk == 0: start_sem_wk = anchor_wk
+                            
+                        if not weeks: continue
+
+                        day = cal.get("day", 2)
+                        t_from, t_to = cal.get("from", 1), cal.get("to", 4)
+                        start_sem_date = datetime.fromtimestamp(start_sem_ms / 1000.0, tz=TZ).date()
+                        day_offset = (day - 2) if day != 1 else 6 
+
+                        for w in sorted(weeks):
+                            class_date = start_sem_date + timedelta(days=(w - start_sem_wk) * 7 + day_offset)
+                            if class_date in canceled_dates: continue
+                            
+                            start_dt = datetime.combine(class_date, TIET_START_MAP.get(t_from, time(6, 45)), tzinfo=TZ)
+                            end_dt = datetime.combine(class_date, TIET_END_MAP.get(t_to, time(11, 45)), tzinfo=TZ)
+                            event_id = _gen_hust_id(class_id, start_dt, "REGULAR")
+                            
+                            if event_id in scraped_events: continue
+                            if event_id in existing_events:
+                                evt = existing_events[event_id]
+                                evt.is_cancelled = False
+                                evt.location = cal.get("place", "Chua xep")
+                            else:
+                                evt = CalendarEvent(id=event_id, summary=base_summary, description=f"Tuan {w}\n{base_desc}", location=cal.get("place", "Chua xep"), start_time=start_dt, end_time=end_dt, source=EventSource.HUST_CTT, is_cancelled=False)
+                                db.add(evt)
+                            scraped_events[event_id] = evt
+                            success_count += 1
+
+            for ev_id, db_ev in existing_events.items():
+                if ev_id not in scraped_events:
+                    db_ev.is_cancelled = True
+
+            await db.commit()
+            logger.info(f"Hoan tat dong bo! Da nap/cap nhat {success_count} su kien vao Database.")    
         except Exception as e:
-            logger.error(f"Loi nghiem trong khi parse va luu DB: {str(e)}")
-     
-#API goi cao du lieu            
+            await db.rollback()
+            logger.error(f"Loi nghiem trong khi parse va luu DB: {str(e)}", exc_info=True)
+
 async def run_sync_pipeline():
     logger.info("--- KICH HOAT PIPELINE DONG BO QLDT ---")
     
