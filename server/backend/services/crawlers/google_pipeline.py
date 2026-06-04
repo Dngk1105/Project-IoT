@@ -16,6 +16,9 @@ from models.calendar import EventSource
 from schemas.calendar import CalendarEventCreate
 from crud.calendar import create_event, clear_future_events_by_source
 
+from sqlalchemy import select
+from models.calendar import CalendarEvent
+
 logger = get_logger("google_pipeline", log_file="google_sync.log")
 
 # Path 
@@ -78,39 +81,74 @@ def _sync_fetch_google_events(days_ahead=90):
 #Parse va luu DB
 async def parse_and_load_google_events(events_data: list):
     success_count = 0
+    now = datetime.now(TZ)
+    
     async with AsyncSessionLocal() as db:
         try:
-            logger.info("Dang don dep lich Google cu trong Database...")
-            await clear_future_events_by_source(db, EventSource.GOOGLE)
+            logger.info("Dang quet lai Google Events de dong bo Delta...")
+            
+            # Lấy tất cả sự kiện Google hiện có trong tương lai
+            stmt = select(CalendarEvent).where(
+                CalendarEvent.source == EventSource.GOOGLE,
+                CalendarEvent.start_time >= now
+            )
+            result = await db.execute(stmt)
+            existing_events = {ev.id: ev for ev in result.scalars().all()}
+            
+            scraped_ids = set()
 
+            # Quét dữ liệu mới (UPSERT)
             for item in events_data:
+                gg_id = item.get("id")
+                if not gg_id: continue
+                
+                # Tạo Định danh cố định từ Google ID
+                event_id = f"gg_{gg_id}"
+                scraped_ids.add(event_id)
+                
                 start_raw = item['start'].get('dateTime', item['start'].get('date'))
                 end_raw = item['end'].get('dateTime', item['end'].get('date'))
+                if not start_raw or 'T' not in start_raw: continue
                 
-                if not start_raw or 'T' not in start_raw:
-                    continue
-                
-                # ve datetime Python
                 start_dt = datetime.fromisoformat(start_raw)
                 end_dt = datetime.fromisoformat(end_raw)
+                summary = item.get('summary', 'Khong tieu de')
+                desc = item.get('description', '')
+                loc = item.get('location', '')
 
-                event_in = CalendarEventCreate(
-                    summary=item.get('summary', 'Khong tieu de'),
-                    description=item.get('description', ''),
-                    location=item.get('location', ''),
-                    start_time=start_dt,
-                    end_time=end_dt,
-                    is_recurring=False, # Đã bung sẵn nên không cần rrule
-                    source=EventSource.GOOGLE
-                )
+                if event_id in existing_events:
+                    # UPDATE: Chỉ gán giá trị mới. SQLAlchemy chỉ tự động đổi updated_at nếu có sự khác biệt!
+                    db_ev = existing_events[event_id]
+                    db_ev.summary = summary
+                    db_ev.description = desc
+                    db_ev.location = loc
+                    db_ev.start_time = start_dt
+                    db_ev.end_time = end_dt
+                    db_ev.is_cancelled = False
+                else:
+                    # INSERT
+                    new_ev = CalendarEvent(
+                        id=event_id,
+                        summary=summary,
+                        description=desc,
+                        location=loc,
+                        start_time=start_dt,
+                        end_time=end_dt,
+                        source=EventSource.GOOGLE
+                    )
+                    db.add(new_ev)
+                    
+                success_count += 1
                 
+            # Soft Delete: Hủy các sự kiện đã bị xóa trên Google Calendar
+            for ev_id, db_ev in existing_events.items():
+                if ev_id not in scraped_ids:
+                    db_ev.is_cancelled = True
 
-                result = await create_event(db, event_in)
-                if result:
-                    success_count += 1
-            
-            logger.info(f"Hoan tat! Da nap {success_count} su kien tu Google vao Database.")
+            await db.commit()
+            logger.info(f"Hoan tat! Đã đồng bộ {success_count} sự kiện Google.")
         except Exception as e:
+            await db.rollback()
             logger.error(f"Loi khi parse Google events: {str(e)}")
 
 # API goi ngoai

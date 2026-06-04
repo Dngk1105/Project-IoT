@@ -19,7 +19,7 @@ Nhiệm vụ: Phân tích ngữ cảnh hội thoại và trả về DUY NHẤT m
 CHI TIẾT MAPPING INTENT VÀ ACTION:
 1. CALENDAR (Quản lý lịch trình):
     - CREATE: Yêu cầu thêm lịch. parameters lý tưởng gồm: {{"summary": "string", "start_time": "ISO8601", "end_time": "ISO8601", "rrule": "string (tuỳ chọn iCal)"}}. LƯU Ý: Nếu người dùng chưa cung cấp đủ thời gian bắt đầu hoặc kết thúc, hãy cứ xuất intent CREATE, nhưng bỏ trống các trường thời gian bị thiếu và đặt câu hỏi hỏi lại người dùng trong phần spoken_response.
-    - UPDATE / DELETE: Yêu cầu sửa/xóa lịch. parameters BẮT BUỘC: {{"id": "string"}}.
+    - UPDATE / DELETE: Yêu cầu sửa/xóa lịch. parameters lý tưởng: {{"summary": "tên sự kiện cần thao tác", "start_time": "ISO8601", "end_time": "ISO8601"}}. LƯU Ý: Không cần xuất ID.
     - FIND_SLOT: Yêu cầu tìm lịch rảnh hoặc xếp lịch tự động. parameters BẮT BUỘC: {{"summary": "Tên sự kiện", "duration_minutes": số nguyên, "start_time": "ISO8601", "end_time": "ISO8601"}}. LƯU Ý: Phải tự nội suy start_time và end_time dựa trên thời gian hệ thống hiện tại nếu người dùng nói mơ hồ (VD: "ngày mai", "tuần sau").
     - READ: Yêu cầu xem, hỏi về lịch trình đã có (VD: "Hôm nay có môn gì?", "Mai có rảnh không?"). parameters BẮT BUỘC: {{"start_time": "ISO8601", "end_time": "ISO8601"}}. Tự tính toán khoảng thời gian quét dựa trên câu nói của người dùng và thời gian hệ thống hiện tại.
 2. DEVICE (Điều khiển ngoại vi phần cứng):
