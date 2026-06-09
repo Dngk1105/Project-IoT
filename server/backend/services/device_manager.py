@@ -1,6 +1,7 @@
 import time
 from typing import Dict, Any, Callable
 from sqlalchemy import select
+import json
 from datetime import datetime, timezone
 
 from core.logger import get_logger
@@ -9,6 +10,7 @@ from core.database import AsyncSessionLocal
 from core.scheduler import push_sync_to_device
 from models.device import Device
 from models.telemetry import Telemetry
+from models.shadow import EndpointStateShadow
 
 logger = get_logger(__name__)
 
@@ -30,8 +32,6 @@ class DeviceManagerService:
             time_payload = PayloadBuilder.build_json({"timestamp": int(time.time())})
             time_topic = MqttTopics.command(device_id, "time_sync")
             publish_cb(time_topic, time_payload, qos=1)
-            
-            
         
         elif status == "offline":
             if device_id in self._active_devices:
@@ -59,6 +59,38 @@ class DeviceManagerService:
                     if status == "offline" and "reason" in payload:
                         device.last_offline_reason = payload.get("reason")
                     device.last_seen = datetime.now(timezone.utc)
+                    
+                if status == "online":
+                    endpoints = core_data.get("endpoints")
+                    if endpoints and isinstance(endpoints, list):
+                        from models.shadow import EndpointStateShadow
+                        import json
+                        
+                        for ep in endpoints:
+                            ep_id = ep.get("ep_id")
+                            stmt_ep = select(EndpointStateShadow).where(
+                                EndpointStateShadow.device_id == device_id,
+                                EndpointStateShadow.ep_id == ep_id
+                            )
+                            res_ep = await session.execute(stmt_ep)
+                            existing_ep = res_ep.scalar_one_or_none()
+
+                            cmds_str = json.dumps(ep.get("supported_cmds", []))
+
+                            if existing_ep:
+                                existing_ep.reported_state = ep.get("state", "UNKNOWN")
+                                existing_ep.name = ep.get("name", existing_ep.name)
+                                existing_ep.supported_cmds = cmds_str
+                            else:
+                                new_ep = EndpointStateShadow(
+                                    device_id=device_id,
+                                    ep_id=ep_id,
+                                    name=ep.get("name", "Unknown"),
+                                    type=ep.get("type", "actuator"),
+                                    supported_cmds=cmds_str,
+                                    reported_state=ep.get("state", "UNKNOWN")
+                                )
+                                session.add(new_ep)
 
                 await session.commit()
                 
@@ -131,7 +163,23 @@ class DeviceManagerService:
         
     async def process_device_shadow(self, device_id: str, action: str, payload: dict, publish_cb: Callable):
         """Xu li trang thai thiet bi ngoai vi"""
-        logger.info(f"Thiết bị [{device_id}] báo cáo trạng thái thiet bi ngoại vi [{action}]: {payload}")
-        # TODO: Đồng bộ trạng thái thực tế của phần cứng lên giao diện Web Dashboard qua WebSocket
+        core_data = payload.get("data", payload)
+        ep_id = core_data.get("ep_id")
+        new_state = core_data.get("reported_state")
+        
+        if ep_id and new_state:
+            async with AsyncSessionLocal() as session:
+                from models.shadow import EndpointStateShadow
+                stmt = select(EndpointStateShadow).where(
+                    EndpointStateShadow.device_id == device_id,
+                    EndpointStateShadow.ep_id == ep_id
+                )
+                result = await session.execute(stmt)
+                ep_record = result.scalar_one_or_none()
+                
+                if ep_record:
+                    ep_record.reported_state = new_state
+                    await session.commit()
+                    logger.info(f"[{device_id}] Cập nhật Shadow: {ep_id} -> {new_state}")
         
 device_manager_service = DeviceManagerService() # Doi tuong singleton duy nhat

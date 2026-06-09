@@ -70,7 +70,7 @@ def publish_message(topic: str, payload: dict, qos: int = 1, retain: bool = Fals
         )
         logger.info(f"[GỬI] Topic: {topic} | Payload: {json_payload}")
         if kwargs:
-            logger.debug(f"      LĐính kèm MQTTv5 Props: {kwargs}")
+            logger.debug(f"Đính kèm MQTTv5 Props: {kwargs}")
     except Exception as e:
         logger.error(f"Lỗi khi gửi bản tin MQTT: {e}")
 

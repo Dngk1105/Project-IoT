@@ -31,7 +31,7 @@ typedef enum {
     MSG_TYPE_UNKNOWN = 0,
     MSG_TYPE_AUDIO_DOWN,
     MSG_TYPE_SYNC_SCHEDULE,
-    MSG_TYPE_SHADOW,
+    MSG_TYPE_SHADOW,    
     MSG_TYPE_EVENTS,
     MSG_TYPE_PONG,
     MSG_TYPE_TIME_SYNC,
@@ -107,9 +107,41 @@ static void parse_json_envelope(const char *payload, mqtt_msg_type_t msg_type, c
                 cJSON_Delete(ack_payload);
             }
         }
-        else if (msg_type == MSG_TYPE_SHADOW){
+        else if (msg_type == MSG_TYPE_SHADOW || msg_type == MSG_TYPE_UNKNOWN){
             ESP_LOGI(TAG, "Device shadow. Cap nhat ngoai vi");
-            // TODO: device_shadow_update(data);
+            cJSON *ep_id = cJSON_GetObjectItem(data, "ep_id");
+            cJSON *action = cJSON_GetObjectItem(data, "action");
+            cJSON *ts_item = cJSON_GetObjectItem(root, "timestamp");
+
+            if (ep_id && action && ts_item){
+                uint32_t cmd_time = (uint32_t)ts_item->valuedouble;
+                uint32_t current_time = get_current_unix_timestamp();
+
+                //Neu lenh qua 60s thi khong thuc hien
+                if (current_time > 0 && abs((int)(current_time - cmd_time)) > 60){
+                    ESP_LOGW(TAG, "Lệnh %s cho %s trễ %d giây. Khong thuc hien!", 
+                            action->valuestring, ep_id->valuestring, abs((int)(current_time - cmd_time)));
+                }else{
+                    ESP_LOGI(TAG, "Thuc hien lenh cmd: %s -> %s", ep_id->valuestring, action->valuestring);
+                    //TODO: Phu viet ham thuc hien o day nhe
+                    // if (ep_id == led_1){
+                    //}
+
+                    // Trả ACK thành công để Server cập nhật trạng thái
+                    if (resp_topic && strlen(resp_topic) > 0) {
+                        cJSON *ack = cJSON_CreateObject();
+                        cJSON_AddStringToObject(ack, "status", "success");
+                        cJSON_AddStringToObject(ack, "ep_id", ep_id->valuestring);
+                        cJSON_AddStringToObject(ack, "reported_state", action->valuestring);
+                        if (corr_data) cJSON_AddStringToObject(ack, "correlation_id", corr_data);
+                        
+                        char *ack_str = cJSON_PrintUnformatted(ack);
+                        mqtt_handler_publish(resp_topic, ack_str, strlen(ack_str), 1, 0, 0);
+                        free(ack_str);
+                        cJSON_Delete(ack);
+                    }
+                }
+            }
         }
         else if (msg_type == MSG_TYPE_TIME_SYNC){
             cJSON *ts_item = cJSON_GetObjectItem(data, "timestamp");
@@ -169,6 +201,23 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
             */
             data = cJSON_CreateObject();
             cJSON_AddStringToObject(data, "status", "online");
+
+            // Danh sach cac thiet bi ngoai vi
+            // Day la mot cam bien/ngoai vi ep1
+            cJSON* endpoints = cJSON_CreateArray();
+            cJSON* ep1 = cJSON_CreateObject();
+            cJSON_AddStringToObject(ep1, "ep_id", "led_1");
+            cJSON_AddStringToObject(ep1, "type", "light");
+            cJSON_AddStringToObject(ep1, "name", "Den led 1");
+            cJSON_AddStringToObject(ep1, "state", "OFF");
+            cJSON_AddItemToArray(endpoints, ep1);
+            cJSON* cmds = cJSON_CreateArray();
+            cJSON_AddItemToArray(cmds, cJSON_CreateString("TURN_ON"));
+            cJSON_AddItemToArray(cmds, cJSON_CreateString("TURN_OFF"));
+            cJSON_AddItemToObject(ep1, "supported_cmds", cmds);
+
+            cJSON_AddItemToObject(data, "endpoints", endpoints);
+
             char* birth_payload = mqtt_proto_build_standard_payload(data);
             mqtt_handler_publish(status_topic, birth_payload, 0, 1, 1);
             free(birth_payload);

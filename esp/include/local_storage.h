@@ -15,7 +15,8 @@ typedef enum {
     ACTION_ALARM = 0,
     ACTION_CLASS,
     ACTION_MEET,
-    ACTION_VOICE
+    ACTION_VOICE,
+    ACTION_DEVICE
 } event_action_t;
 
 typedef struct {

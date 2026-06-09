@@ -5,8 +5,6 @@ from datetime import datetime
 from .base import Base
 
 class Device(Base):
-    __tablename__ = "devices"
-
     id: Mapped[str] = mapped_column(String(50), primary_key=True)
     name: Mapped[str] = mapped_column(String(100), default="New mcu")
     status: Mapped[str] = mapped_column(String(20), default="offline")

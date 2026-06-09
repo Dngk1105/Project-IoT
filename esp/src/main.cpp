@@ -97,27 +97,35 @@ void app_logic_task(void *pvParameters) {
                         if (current_time >= (next_event.timestamp - 5)){
                             ESP_LOGI(TAG, "ĐẾN GIỜ BÁO THỨC! Sự kiện: %s", next_event.msg);
 
-                            // Xin audio 
-                            cJSON *req = cJSON_CreateObject();
-                            cJSON_AddStringToObject(req, "action", "request_tts");
-                            cJSON_AddStringToObject(req, "event_id", next_event.id);
-
-                            // tạo session id 
-                            char session_id[32];
-                            snprintf(session_id, sizeof(session_id), "ss_%lu", current_time);
-                            cJSON_AddStringToObject(req, "session_id", session_id);
-
-                            char *req_str = cJSON_PrintUnformatted(req);
-                            if (req_str) {
-                                char topic[80];
-                                snprintf(topic, sizeof(topic), "iot_schedule/%s/audio/request", mqtt_get_device_id());
-                                mqtt_handler_publish(topic, req_str, strlen(req_str), 1, 0, 1);
-                                free(req_str);
+                            if (next_event.action == ACTION_DEVICE){
+                                ESP_LOGI(TAG, "ĐẾN GIỜ HẸN! Thực thi lệnh: %s", next_event.msg);
+                                // Parse JSON trong next_event.msg và điều khiển GPIO
+                                // ...
+                                // Báo cáo Telemetry về Server
+                                local_storage_remove_event(next_event.id);
+                            } else{
+                                // Xin audio 
+                                cJSON *req = cJSON_CreateObject();
+                                cJSON_AddStringToObject(req, "action", "request_tts");
+                                cJSON_AddStringToObject(req, "event_id", next_event.id);
+    
+                                // tạo session id 
+                                char session_id[32];
+                                snprintf(session_id, sizeof(session_id), "ss_%lu", current_time);
+                                cJSON_AddStringToObject(req, "session_id", session_id);
+    
+                                char *req_str = cJSON_PrintUnformatted(req);
+                                if (req_str) {
+                                    char topic[80];
+                                    snprintf(topic, sizeof(topic), "iot_schedule/%s/audio/request", mqtt_get_device_id());
+                                    mqtt_handler_publish(topic, req_str, strlen(req_str), 1, 0, 1);
+                                    free(req_str);
+                                }
+                                cJSON_Delete(req);
+    
+                                local_storage_remove_event(next_event.id);
+                                request_app_state(STATE_WAIT_SERVER);
                             }
-                            cJSON_Delete(req);
-
-                            local_storage_remove_event(next_event.id);
-                            request_app_state(STATE_WAIT_SERVER);
                         }
                     }
                 }

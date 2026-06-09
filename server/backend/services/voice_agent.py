@@ -8,6 +8,11 @@ from core.prompts.system_prompts import get_assistant_prompt
 from core.scheduler import push_sync_to_device
 from schemas.calendar import CalendarEventCreate, CalendarEventUpdate
 import crud.calendar as crud_calendar
+from models.shadow import EndpointStateShadow
+from sqlalchemy import select
+from core.mqtt_client import publish_message
+from core.mqtt_protocol import PayloadBuilder
+
 
 logger = get_logger(__name__, "voice_agent")
 
@@ -43,12 +48,25 @@ class VoiceAgentService:
         self._session_context = {}
 
     async def process_user_intent(self, device_id: str, user_text: str) -> tuple[str, bool]:
+        #Them context trang thai va lenh dieu khien cho AI
+        device_context = ""
+        async with AsyncSessionLocal() as db:
+            stmt = select(EndpointStateShadow).where(EndpointStateShadow.device_id == device_id)
+            result = await db.execute(stmt)
+            endpoints = result.scalars().all()
+            
+            if endpoints:
+                ep_list = [f"- {ep.name} (ep_id: '{ep.ep_id}', trang thai: {ep.reported_state}, lenh ho tro: {ep.supported_cmds})" for ep in endpoints]
+                device_context = "THIẾT BỊ NGOẠI VI ĐANG CÓ:\n" + "\n".join(ep_list)
+
         pending_state = self._session_context.get(device_id)
         context_str = f"LUU Y: He thong dang cho xac nhan hanh dong {pending_state['action']} voi du lieu: {pending_state['params']}." if pending_state else ""
         
+        full_context = f"{context_str}\n\n{device_context}"
+        
         sys_prompt = get_assistant_prompt(
             current_time=datetime.now().astimezone().isoformat(),
-            context=context_str
+            context=full_context
         )
         
         ai_data = await llm_api.chat(sys_prompt, user_text)
@@ -240,4 +258,23 @@ class VoiceAgentService:
                 if sync_needed:
                     await push_sync_to_device(device_id)
 
+        if intent == "DEVICE":
+            ep_id = params.get("device_id")
+            if ep_id and action in ["TURN_ON", "TURN_OFF"]:
+                from core.mqtt_client import publish_message
+                from core.mqtt_protocol import PayloadBuilder
+                
+                cmd_data = {
+                    "ep_id": ep_id,
+                    "action": action
+                }
+                
+                target_topic = f"iot_schedule/{device_id}/shadow/update"
+                payload = PayloadBuilder.build_json(cmd_data)
+                
+                # Bắn lệnh không cần chờ (Fire & Forget)
+                publish_message(target_topic, payload, qos=2)
+                logger.info(f"[{device_id}] Đã ra lệnh {action} cho {ep_id}")
+            else:
+                logger.error(f"[{device_id}] Thiếu tham số, không thể điều khiển thiết bị!")
 voice_agent = VoiceAgentService()

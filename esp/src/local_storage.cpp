@@ -15,6 +15,7 @@ static event_action_t action_str_to_enum(const char* action_str) {
     if (strcmp(action_str, "CLASS") == 0) return ACTION_CLASS;
     if (strcmp(action_str, "MEET") == 0) return ACTION_MEET;
     if (strcmp(action_str, "VOICE") == 0) return ACTION_VOICE;
+    if (strcmp(action_str, "DEVICE_CMD") == 0) return ACTION_DEVICE;
     return ACTION_ALARM; // Default
 }
 
@@ -23,6 +24,7 @@ static const char* action_enum_to_str(event_action_t action) {
         case ACTION_CLASS: return "CLASS";
         case ACTION_MEET:  return "MEET";
         case ACTION_VOICE: return "VOICE";
+        case ACTION_DEVICE: return "DEVICE_CMD";
         default:           return "ALARM";
     }
 }

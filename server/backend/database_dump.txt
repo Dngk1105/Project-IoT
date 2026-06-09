@@ -1,0 +1,566 @@
+DATABASE DUMP - iot_calendar.db
+Thời gian: 2026-06-04 05:54:41
+================================================================================
+
+TỔNG SỐ BẢNG: 4
+
+- calendar_events
+- device_event_shadow
+- devices
+- telemetries
+
+================================================================================
+
+
+================================================================================
+TABLE: calendar_events
+================================================================================
+
+id                                   | source   | summary                                         | description                                                                                 | location        | start_time                 | end_time                   | tz_info          | is_recurring | rrule | is_cancelled | created_at          | updated_at         
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+hust_168503_7640019e9d732fb5         | HUST_CTT | [168503] Lập trình mạng                         | Tuan 25
+Ma HP: IT4060
+GV: Lê Bá Vui
+Lop:                                                    | D9-205          | 2026-02-24 06:45:00.000000 | 2026-02-24 09:10:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168503_1503913c2d283823         | HUST_CTT | [168503] Lập trình mạng                         | Tuan 26
+Ma HP: IT4060
+GV: Lê Bá Vui
+Lop:                                                    | D9-205          | 2026-03-03 06:45:00.000000 | 2026-03-03 09:10:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168503_a86c4ffa31b71c1f         | HUST_CTT | [168503] Lập trình mạng                         | Tuan 27
+Ma HP: IT4060
+GV: Lê Bá Vui
+Lop:                                                    | D9-205          | 2026-03-10 06:45:00.000000 | 2026-03-10 09:10:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168503_16d8b716e47b162f         | HUST_CTT | [168503] Lập trình mạng                         | Tuan 28
+Ma HP: IT4060
+GV: Lê Bá Vui
+Lop:                                                    | D9-205          | 2026-03-17 06:45:00.000000 | 2026-03-17 09:10:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168503_179a04335ec568e9         | HUST_CTT | [168503] Lập trình mạng                         | Tuan 29
+Ma HP: IT4060
+GV: Lê Bá Vui
+Lop:                                                    | D9-205          | 2026-03-24 06:45:00.000000 | 2026-03-24 09:10:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168503_cd3abffcfc093b69         | HUST_CTT | [168503] Lập trình mạng                         | Tuan 30
+Ma HP: IT4060
+GV: Lê Bá Vui
+Lop:                                                    | D9-205          | 2026-03-31 06:45:00.000000 | 2026-03-31 09:10:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168503_b3d2edc84be0244d         | HUST_CTT | [168503] Lập trình mạng                         | Tuan 31
+Ma HP: IT4060
+GV: Lê Bá Vui
+Lop:                                                    | D9-205          | 2026-04-07 06:45:00.000000 | 2026-04-07 09:10:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168503_da784897a5d6f7ce         | HUST_CTT | [168503] Lập trình mạng                         | Tuan 32
+Ma HP: IT4060
+GV: Lê Bá Vui
+Lop:                                                    | D9-205          | 2026-04-14 06:45:00.000000 | 2026-04-14 09:10:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168503_d4599e86a68f2f64         | HUST_CTT | [168503] Lập trình mạng                         | Tuan 35
+Ma HP: IT4060
+GV: Lê Bá Vui
+Lop:                                                    | D9-205          | 2026-05-05 06:45:00.000000 | 2026-05-05 09:10:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168503_6201e09529a97c43         | HUST_CTT | [168503] Lập trình mạng                         | Tuan 36
+Ma HP: IT4060
+GV: Lê Bá Vui
+Lop:                                                    | D9-205          | 2026-05-12 06:45:00.000000 | 2026-05-12 09:10:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168503_d5fce438e618a8e2         | HUST_CTT | [168503] Lập trình mạng                         | Tuan 37
+Ma HP: IT4060
+GV: Lê Bá Vui
+Lop:                                                    | D9-205          | 2026-05-19 06:45:00.000000 | 2026-05-19 09:10:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168503_6a29fbc8d3bb7215         | HUST_CTT | [168503] Lập trình mạng                         | Tuan 38
+Ma HP: IT4060
+GV: Lê Bá Vui
+Lop:                                                    | D9-205          | 2026-05-26 06:45:00.000000 | 2026-05-26 09:10:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168503_34085a0288905ce0         | HUST_CTT | [168503] Lập trình mạng                         | Tuan 39
+Ma HP: IT4060
+GV: Lê Bá Vui
+Lop:                                                    | D9-205          | 2026-06-02 06:45:00.000000 | 2026-06-02 09:10:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168503_3c243c243494f9c7         | HUST_CTT | [168503] Lập trình mạng                         | Tuan 40
+Ma HP: IT4060
+GV: Lê Bá Vui
+Lop:                                                    | D9-205          | 2026-06-09 06:45:00.000000 | 2026-06-09 09:10:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168503_632325cf4d5c4640         | HUST_CTT | [168503] Lập trình mạng                         | Tuan 41
+Ma HP: IT4060
+GV: Lê Bá Vui
+Lop:                                                    | D9-205          | 2026-06-16 06:45:00.000000 | 2026-06-16 09:10:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168503_2db8d8a21c308c7e         | HUST_CTT | [168503] Lập trình mạng                         | Tuan 42
+Ma HP: IT4060
+GV: Lê Bá Vui
+Lop:                                                    | D9-205          | 2026-06-23 06:45:00.000000 | 2026-06-23 09:10:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_761960_3213ffe092fbc40c         | HUST_CTT | [761960] Hệ nhúng                               | Tuan 30
+Ma HP: IT4210
+GV: Đỗ Công Thuần
+Lop: IT4210-Hệ Chuẩn K68 (KTMT)-N04                 | B1-203          | 2045-09-11 16:45:00.000000 | 2045-09-11 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_761960_49a0ce29f6f8f553         | HUST_CTT | [761960] Hệ nhúng                               | Tuan 34
+Ma HP: IT4210
+GV: Đỗ Công Thuần
+Lop: IT4210-Hệ Chuẩn K68 (KTMT)-N04                 | B1-203          | 2045-10-09 16:45:00.000000 | 2045-10-09 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_761960_da9c4f259151d591         | HUST_CTT | [761960] Hệ nhúng                               | Tuan 38
+Ma HP: IT4210
+GV: Đỗ Công Thuần
+Lop: IT4210-Hệ Chuẩn K68 (KTMT)-N04                 | B1-203          | 2045-11-06 16:45:00.000000 | 2045-11-06 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168510_45e434b7a3b2049f         | HUST_CTT | HOC BU: [168510] IoT và ứng dụng                | Hoc bu cho 22/05
+Ma HP: IT4735
+GV: Nguyễn Đình Thuận
+Lop: Kỹ thuật máy tính-MĐ1,2-K68S      |                 | 2026-05-22 09:20:00.000000 | 2026-05-22 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 22:46:54
+hust_168510_a5288322c332a973         | HUST_CTT | [168510] IoT và ứng dụng                        | Tuan 25
+Ma HP: IT4735
+GV: Nguyễn Đình Thuận
+Lop: Kỹ thuật máy tính-MĐ1,2-K68S               | TC-308          | 2026-02-27 09:20:00.000000 | 2026-02-27 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168510_42b7e004f8c159ca         | HUST_CTT | [168510] IoT và ứng dụng                        | Tuan 26
+Ma HP: IT4735
+GV: Nguyễn Đình Thuận
+Lop: Kỹ thuật máy tính-MĐ1,2-K68S               | TC-308          | 2026-03-06 09:20:00.000000 | 2026-03-06 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168510_95dd2a23898b90c1         | HUST_CTT | [168510] IoT và ứng dụng                        | Tuan 27
+Ma HP: IT4735
+GV: Nguyễn Đình Thuận
+Lop: Kỹ thuật máy tính-MĐ1,2-K68S               | TC-308          | 2026-03-13 09:20:00.000000 | 2026-03-13 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168510_a16e8647b33b1e97         | HUST_CTT | [168510] IoT và ứng dụng                        | Tuan 28
+Ma HP: IT4735
+GV: Nguyễn Đình Thuận
+Lop: Kỹ thuật máy tính-MĐ1,2-K68S               | TC-308          | 2026-03-20 09:20:00.000000 | 2026-03-20 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168510_6ff9c52424e14fd3         | HUST_CTT | [168510] IoT và ứng dụng                        | Tuan 29
+Ma HP: IT4735
+GV: Nguyễn Đình Thuận
+Lop: Kỹ thuật máy tính-MĐ1,2-K68S               | TC-308          | 2026-03-27 09:20:00.000000 | 2026-03-27 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168510_ed994a5417394cb6         | HUST_CTT | [168510] IoT và ứng dụng                        | Tuan 30
+Ma HP: IT4735
+GV: Nguyễn Đình Thuận
+Lop: Kỹ thuật máy tính-MĐ1,2-K68S               | TC-308          | 2026-04-03 09:20:00.000000 | 2026-04-03 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168510_5f02702ef38c959d         | HUST_CTT | [168510] IoT và ứng dụng                        | Tuan 31
+Ma HP: IT4735
+GV: Nguyễn Đình Thuận
+Lop: Kỹ thuật máy tính-MĐ1,2-K68S               | TC-308          | 2026-04-10 09:20:00.000000 | 2026-04-10 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168510_3c4b663fc1d5c449         | HUST_CTT | [168510] IoT và ứng dụng                        | Tuan 32
+Ma HP: IT4735
+GV: Nguyễn Đình Thuận
+Lop: Kỹ thuật máy tính-MĐ1,2-K68S               | TC-308          | 2026-04-17 09:20:00.000000 | 2026-04-17 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168510_99a82241f90fc2cb         | HUST_CTT | [168510] IoT và ứng dụng                        | Tuan 34
+Ma HP: IT4735
+GV: Nguyễn Đình Thuận
+Lop: Kỹ thuật máy tính-MĐ1,2-K68S               | TC-308          | 2026-05-01 09:20:00.000000 | 2026-05-01 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168510_5770d1d86c98409d         | HUST_CTT | [168510] IoT và ứng dụng                        | Tuan 35
+Ma HP: IT4735
+GV: Nguyễn Đình Thuận
+Lop: Kỹ thuật máy tính-MĐ1,2-K68S               | TC-308          | 2026-05-08 09:20:00.000000 | 2026-05-08 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168510_05ebf3ebb3a08b44         | HUST_CTT | [168510] IoT và ứng dụng                        | Tuan 36
+Ma HP: IT4735
+GV: Nguyễn Đình Thuận
+Lop: Kỹ thuật máy tính-MĐ1,2-K68S               | TC-308          | 2026-05-15 09:20:00.000000 | 2026-05-15 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168510_3195b4a73201df96         | HUST_CTT | [168510] IoT và ứng dụng                        | Tuan 38
+Ma HP: IT4735
+GV: Nguyễn Đình Thuận
+Lop: Kỹ thuật máy tính-MĐ1,2-K68S               | TC-308          | 2026-05-29 09:20:00.000000 | 2026-05-29 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168510_a389d8a1c7c315ef         | HUST_CTT | [168510] IoT và ứng dụng                        | Tuan 39
+Ma HP: IT4735
+GV: Nguyễn Đình Thuận
+Lop: Kỹ thuật máy tính-MĐ1,2-K68S               | TC-308          | 2026-06-05 09:20:00.000000 | 2026-06-05 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168510_a20054c671e7d95b         | HUST_CTT | [168510] IoT và ứng dụng                        | Tuan 40
+Ma HP: IT4735
+GV: Nguyễn Đình Thuận
+Lop: Kỹ thuật máy tính-MĐ1,2-K68S               | TC-308          | 2026-06-12 09:20:00.000000 | 2026-06-12 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168510_5e4c156296c49dd5         | HUST_CTT | [168510] IoT và ứng dụng                        | Tuan 41
+Ma HP: IT4735
+GV: Nguyễn Đình Thuận
+Lop: Kỹ thuật máy tính-MĐ1,2-K68S               | TC-308          | 2026-06-19 09:20:00.000000 | 2026-06-19 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168510_339a9828ceaaed61         | HUST_CTT | [168510] IoT và ứng dụng                        | Tuan 42
+Ma HP: IT4735
+GV: Nguyễn Đình Thuận
+Lop: Kỹ thuật máy tính-MĐ1,2-K68S               | TC-308          | 2026-06-26 09:20:00.000000 | 2026-06-26 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_170313_8c49a810e3fd6c8a         | HUST_CTT | [170313] Lịch sử Đảng cộng sản Việt Nam         | Tuan 26
+Ma HP: SSH1141
+GV: Lê Thị Lan
+Lop:                                                  | D3-5-501        | 2026-03-06 06:45:00.000000 | 2026-03-06 09:10:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_170313_793ff48179c2fa2f         | HUST_CTT | [170313] Lịch sử Đảng cộng sản Việt Nam         | Tuan 28
+Ma HP: SSH1141
+GV: Lê Thị Lan
+Lop:                                                  | D3-5-501        | 2026-03-20 06:45:00.000000 | 2026-03-20 09:10:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_170313_e9055f5fc650131a         | HUST_CTT | [170313] Lịch sử Đảng cộng sản Việt Nam         | Tuan 30
+Ma HP: SSH1141
+GV: Lê Thị Lan
+Lop:                                                  | D3-5-501        | 2026-04-03 06:45:00.000000 | 2026-04-03 09:10:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_170313_716f1f138a74751b         | HUST_CTT | [170313] Lịch sử Đảng cộng sản Việt Nam         | Tuan 32
+Ma HP: SSH1141
+GV: Lê Thị Lan
+Lop:                                                  | D3-5-501        | 2026-04-17 06:45:00.000000 | 2026-04-17 09:10:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_170313_834ce093109d180f         | HUST_CTT | [170313] Lịch sử Đảng cộng sản Việt Nam         | Tuan 35
+Ma HP: SSH1141
+GV: Lê Thị Lan
+Lop:                                                  | D3-5-501        | 2026-05-08 06:45:00.000000 | 2026-05-08 09:10:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_170313_d29042427a613bb1         | HUST_CTT | [170313] Lịch sử Đảng cộng sản Việt Nam         | Tuan 37
+Ma HP: SSH1141
+GV: Lê Thị Lan
+Lop:                                                  | D3-5-501        | 2026-05-22 06:45:00.000000 | 2026-05-22 09:10:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_170313_861c42468d5c5e83         | HUST_CTT | [170313] Lịch sử Đảng cộng sản Việt Nam         | Tuan 39
+Ma HP: SSH1141
+GV: Lê Thị Lan
+Lop:                                                  | D3-5-501        | 2026-06-05 06:45:00.000000 | 2026-06-05 09:10:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_170313_a5f823893ed3b768         | HUST_CTT | [170313] Lịch sử Đảng cộng sản Việt Nam         | Tuan 41
+Ma HP: SSH1141
+GV: Lê Thị Lan
+Lop:                                                  | D3-5-501        | 2026-06-19 06:45:00.000000 | 2026-06-19 09:10:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168506_35044520e624c876         | HUST_CTT | [168506] Thiết kế và triển khai mạng IP         | Tuan 25
+Ma HP: IT4651
+GV: Nguyễn Đức Toàn
+Lop: Kỹ thuật máy tính-K68S                       | TC-312          | 2026-02-26 10:15:00.000000 | 2026-02-26 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168506_09406899a1d17db3         | HUST_CTT | [168506] Thiết kế và triển khai mạng IP         | Tuan 26
+Ma HP: IT4651
+GV: Nguyễn Đức Toàn
+Lop: Kỹ thuật máy tính-K68S                       | TC-312          | 2026-03-05 10:15:00.000000 | 2026-03-05 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168506_c05e56a3617903e3         | HUST_CTT | [168506] Thiết kế và triển khai mạng IP         | Tuan 27
+Ma HP: IT4651
+GV: Nguyễn Đức Toàn
+Lop: Kỹ thuật máy tính-K68S                       | TC-312          | 2026-03-12 10:15:00.000000 | 2026-03-12 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168506_0c2aadd6f98bc76a         | HUST_CTT | [168506] Thiết kế và triển khai mạng IP         | Tuan 28
+Ma HP: IT4651
+GV: Nguyễn Đức Toàn
+Lop: Kỹ thuật máy tính-K68S                       | TC-312          | 2026-03-19 10:15:00.000000 | 2026-03-19 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168506_43ce18003f201b87         | HUST_CTT | [168506] Thiết kế và triển khai mạng IP         | Tuan 29
+Ma HP: IT4651
+GV: Nguyễn Đức Toàn
+Lop: Kỹ thuật máy tính-K68S                       | TC-312          | 2026-03-26 10:15:00.000000 | 2026-03-26 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168506_d3ce774a1c015290         | HUST_CTT | [168506] Thiết kế và triển khai mạng IP         | Tuan 30
+Ma HP: IT4651
+GV: Nguyễn Đức Toàn
+Lop: Kỹ thuật máy tính-K68S                       | TC-312          | 2026-04-02 10:15:00.000000 | 2026-04-02 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168506_f0a99107ec9fc803         | HUST_CTT | [168506] Thiết kế và triển khai mạng IP         | Tuan 31
+Ma HP: IT4651
+GV: Nguyễn Đức Toàn
+Lop: Kỹ thuật máy tính-K68S                       | TC-312          | 2026-04-09 10:15:00.000000 | 2026-04-09 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168506_c34495f0f393042f         | HUST_CTT | [168506] Thiết kế và triển khai mạng IP         | Tuan 32
+Ma HP: IT4651
+GV: Nguyễn Đức Toàn
+Lop: Kỹ thuật máy tính-K68S                       | TC-312          | 2026-04-16 10:15:00.000000 | 2026-04-16 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168506_5414f95ffea1bb73         | HUST_CTT | [168506] Thiết kế và triển khai mạng IP         | Tuan 34
+Ma HP: IT4651
+GV: Nguyễn Đức Toàn
+Lop: Kỹ thuật máy tính-K68S                       | TC-312          | 2026-04-30 10:15:00.000000 | 2026-04-30 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168506_6086fb33524b1b29         | HUST_CTT | [168506] Thiết kế và triển khai mạng IP         | Tuan 35
+Ma HP: IT4651
+GV: Nguyễn Đức Toàn
+Lop: Kỹ thuật máy tính-K68S                       | TC-312          | 2026-05-07 10:15:00.000000 | 2026-05-07 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168506_1f895763a70a588a         | HUST_CTT | [168506] Thiết kế và triển khai mạng IP         | Tuan 36
+Ma HP: IT4651
+GV: Nguyễn Đức Toàn
+Lop: Kỹ thuật máy tính-K68S                       | TC-312          | 2026-05-14 10:15:00.000000 | 2026-05-14 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168506_e20557494fd79078         | HUST_CTT | [168506] Thiết kế và triển khai mạng IP         | Tuan 37
+Ma HP: IT4651
+GV: Nguyễn Đức Toàn
+Lop: Kỹ thuật máy tính-K68S                       | TC-312          | 2026-05-21 10:15:00.000000 | 2026-05-21 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168506_f7d39abc1a07983a         | HUST_CTT | [168506] Thiết kế và triển khai mạng IP         | Tuan 38
+Ma HP: IT4651
+GV: Nguyễn Đức Toàn
+Lop: Kỹ thuật máy tính-K68S                       | TC-312          | 2026-05-28 10:15:00.000000 | 2026-05-28 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168506_34a78ecee43bf27e         | HUST_CTT | [168506] Thiết kế và triển khai mạng IP         | Tuan 39
+Ma HP: IT4651
+GV: Nguyễn Đức Toàn
+Lop: Kỹ thuật máy tính-K68S                       | TC-312          | 2026-06-04 10:15:00.000000 | 2026-06-04 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168506_4790813373daa66a         | HUST_CTT | [168506] Thiết kế và triển khai mạng IP         | Tuan 40
+Ma HP: IT4651
+GV: Nguyễn Đức Toàn
+Lop: Kỹ thuật máy tính-K68S                       | TC-312          | 2026-06-11 10:15:00.000000 | 2026-06-11 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168506_f5e653742050d13d         | HUST_CTT | [168506] Thiết kế và triển khai mạng IP         | Tuan 41
+Ma HP: IT4651
+GV: Nguyễn Đức Toàn
+Lop: Kỹ thuật máy tính-K68S                       | TC-312          | 2026-06-18 10:15:00.000000 | 2026-06-18 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168506_843c039102c0990f         | HUST_CTT | [168506] Thiết kế và triển khai mạng IP         | Tuan 42
+Ma HP: IT4651
+GV: Nguyễn Đức Toàn
+Lop: Kỹ thuật máy tính-K68S                       | TC-312          | 2026-06-25 10:15:00.000000 | 2026-06-25 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168505_c0d2a200de907a64         | HUST_CTT | [168505] Hệ nhúng                               | Tuan 25
+Ma HP: IT4210
+GV: Ngô Lam Trung
+Lop: Kỹ thuật máy tính-K68S                         | D9-205          | 2026-02-24 09:20:00.000000 | 2026-02-24 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168505_52b76ab8376ebb74         | HUST_CTT | [168505] Hệ nhúng                               | Tuan 26
+Ma HP: IT4210
+GV: Ngô Lam Trung
+Lop: Kỹ thuật máy tính-K68S                         | D9-205          | 2026-03-03 09:20:00.000000 | 2026-03-03 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168505_ea39938e6f7fb0d2         | HUST_CTT | [168505] Hệ nhúng                               | Tuan 27
+Ma HP: IT4210
+GV: Ngô Lam Trung
+Lop: Kỹ thuật máy tính-K68S                         | D9-205          | 2026-03-10 09:20:00.000000 | 2026-03-10 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168505_06a0ff6e2b62065c         | HUST_CTT | [168505] Hệ nhúng                               | Tuan 28
+Ma HP: IT4210
+GV: Ngô Lam Trung
+Lop: Kỹ thuật máy tính-K68S                         | D9-205          | 2026-03-17 09:20:00.000000 | 2026-03-17 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168505_a8febb8de2d1a764         | HUST_CTT | [168505] Hệ nhúng                               | Tuan 29
+Ma HP: IT4210
+GV: Ngô Lam Trung
+Lop: Kỹ thuật máy tính-K68S                         | D9-205          | 2026-03-24 09:20:00.000000 | 2026-03-24 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168505_09f4df81d7ea71f8         | HUST_CTT | [168505] Hệ nhúng                               | Tuan 30
+Ma HP: IT4210
+GV: Ngô Lam Trung
+Lop: Kỹ thuật máy tính-K68S                         | D9-205          | 2026-03-31 09:20:00.000000 | 2026-03-31 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168505_975bf9f487e33513         | HUST_CTT | [168505] Hệ nhúng                               | Tuan 31
+Ma HP: IT4210
+GV: Ngô Lam Trung
+Lop: Kỹ thuật máy tính-K68S                         | D9-205          | 2026-04-07 09:20:00.000000 | 2026-04-07 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168505_c550a848ce37e794         | HUST_CTT | [168505] Hệ nhúng                               | Tuan 32
+Ma HP: IT4210
+GV: Ngô Lam Trung
+Lop: Kỹ thuật máy tính-K68S                         | D9-205          | 2026-04-14 09:20:00.000000 | 2026-04-14 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168505_2effa0413c48229a         | HUST_CTT | [168505] Hệ nhúng                               | Tuan 34
+Ma HP: IT4210
+GV: Ngô Lam Trung
+Lop: Kỹ thuật máy tính-K68S                         | D9-205          | 2026-04-28 09:20:00.000000 | 2026-04-28 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168505_be6807c3e5a7d028         | HUST_CTT | [168505] Hệ nhúng                               | Tuan 35
+Ma HP: IT4210
+GV: Ngô Lam Trung
+Lop: Kỹ thuật máy tính-K68S                         | D9-205          | 2026-05-05 09:20:00.000000 | 2026-05-05 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168505_7496584ec24dbe65         | HUST_CTT | [168505] Hệ nhúng                               | Tuan 36
+Ma HP: IT4210
+GV: Ngô Lam Trung
+Lop: Kỹ thuật máy tính-K68S                         | D9-205          | 2026-05-12 09:20:00.000000 | 2026-05-12 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168505_30e34d83d06657af         | HUST_CTT | [168505] Hệ nhúng                               | Tuan 37
+Ma HP: IT4210
+GV: Ngô Lam Trung
+Lop: Kỹ thuật máy tính-K68S                         | D9-205          | 2026-05-19 09:20:00.000000 | 2026-05-19 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168505_f951e1faf93f30a8         | HUST_CTT | [168505] Hệ nhúng                               | Tuan 38
+Ma HP: IT4210
+GV: Ngô Lam Trung
+Lop: Kỹ thuật máy tính-K68S                         | D9-205          | 2026-05-26 09:20:00.000000 | 2026-05-26 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168505_7530713671ac57fa         | HUST_CTT | [168505] Hệ nhúng                               | Tuan 39
+Ma HP: IT4210
+GV: Ngô Lam Trung
+Lop: Kỹ thuật máy tính-K68S                         | D9-205          | 2026-06-02 09:20:00.000000 | 2026-06-02 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168505_d12f5c6adca411ff         | HUST_CTT | [168505] Hệ nhúng                               | Tuan 40
+Ma HP: IT4210
+GV: Ngô Lam Trung
+Lop: Kỹ thuật máy tính-K68S                         | D9-205          | 2026-06-09 09:20:00.000000 | 2026-06-09 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168505_267e67e5c8501352         | HUST_CTT | [168505] Hệ nhúng                               | Tuan 41
+Ma HP: IT4210
+GV: Ngô Lam Trung
+Lop: Kỹ thuật máy tính-K68S                         | D9-205          | 2026-06-16 09:20:00.000000 | 2026-06-16 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168505_9c6df490a6881be0         | HUST_CTT | [168505] Hệ nhúng                               | Tuan 42
+Ma HP: IT4210
+GV: Ngô Lam Trung
+Lop: Kỹ thuật máy tính-K68S                         | D9-205          | 2026-06-23 09:20:00.000000 | 2026-06-23 11:45:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_761968_f34b4871640143c1         | HUST_CTT | HOC BU: [761968] Thiết kế và triển khai mạng IP | Hoc bu cho 19/05
+Ma HP: IT4651
+GV: Trần Đình Kiến Giang
+Lop: IT4651-Hệ chuẩn K68 (KTMT)-N06 | B1-107          | 2026-05-19 12:30:00.000000 | 2026-05-19 17:30:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 22:46:54
+hust_761968_de298dafd269eb06         | HUST_CTT | HOC BU: [761968] Thiết kế và triển khai mạng IP | Hoc bu cho 28/04
+Ma HP: IT4651
+GV: Trần Đình Kiến Giang
+Lop: IT4651-Hệ chuẩn K68 (KTMT)-N06 | B1-204          | 2026-04-21 12:30:00.000000 | 2026-04-21 17:30:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 22:46:54
+hust_761968_6a6c3a51f0eea6dc         | HUST_CTT | [761968] Thiết kế và triển khai mạng IP         | Tuan 31
+Ma HP: IT4651
+GV: Trần Đình Kiến Giang
+Lop: IT4651-Hệ chuẩn K68 (KTMT)-N06          | B1-204          | 2035-01-19 16:45:00.000000 | 2035-01-19 17:30:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_761968_2abc5da6c2ce7e49         | HUST_CTT | [761968] Thiết kế và triển khai mạng IP         | Tuan 34
+Ma HP: IT4651
+GV: Trần Đình Kiến Giang
+Lop: IT4651-Hệ chuẩn K68 (KTMT)-N06          | B1-204          | 2035-02-09 16:45:00.000000 | 2035-02-09 17:30:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_761968_9181fc600bf2d781         | HUST_CTT | [761968] Thiết kế và triển khai mạng IP         | Tuan 35
+Ma HP: IT4651
+GV: Trần Đình Kiến Giang
+Lop: IT4651-Hệ chuẩn K68 (KTMT)-N06          | B1-204          | 2035-02-16 16:45:00.000000 | 2035-02-16 17:30:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_761968_043125cac0447833         | HUST_CTT | [761968] Thiết kế và triển khai mạng IP         | Tuan 37
+Ma HP: IT4651
+GV: Trần Đình Kiến Giang
+Lop: IT4651-Hệ chuẩn K68 (KTMT)-N06          | B1-204          | 2035-03-02 16:45:00.000000 | 2035-03-02 17:30:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_761968_f362dd541608e229         | HUST_CTT | [761968] Thiết kế và triển khai mạng IP         | Tuan 39
+Ma HP: IT4651
+GV: Trần Đình Kiến Giang
+Lop: IT4651-Hệ chuẩn K68 (KTMT)-N06          | B1-204          | 2035-03-16 16:45:00.000000 | 2035-03-16 17:30:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168487_780f46ea315783b6         | HUST_CTT | [168487] Phân tích và thiết kế hệ thống         | Tuan 25
+Ma HP: IT3120
+GV: Nguyễn Bá Ngọc
+Lop: Khoa học máy tính-K68C                        | D9-301          | 2026-02-27 12:30:00.000000 | 2026-02-27 14:55:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168487_3ed4712a975043f5         | HUST_CTT | [168487] Phân tích và thiết kế hệ thống         | Tuan 26
+Ma HP: IT3120
+GV: Nguyễn Bá Ngọc
+Lop: Khoa học máy tính-K68C                        | D9-301          | 2026-03-06 12:30:00.000000 | 2026-03-06 14:55:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168487_0f63a24ee3731854         | HUST_CTT | [168487] Phân tích và thiết kế hệ thống         | Tuan 27
+Ma HP: IT3120
+GV: Nguyễn Bá Ngọc
+Lop: Khoa học máy tính-K68C                        | D9-301          | 2026-03-13 12:30:00.000000 | 2026-03-13 14:55:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168487_0ab89be513121e4a         | HUST_CTT | [168487] Phân tích và thiết kế hệ thống         | Tuan 28
+Ma HP: IT3120
+GV: Nguyễn Bá Ngọc
+Lop: Khoa học máy tính-K68C                        | D9-301          | 2026-03-20 12:30:00.000000 | 2026-03-20 14:55:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168487_7d5c59581431cbdb         | HUST_CTT | [168487] Phân tích và thiết kế hệ thống         | Tuan 29
+Ma HP: IT3120
+GV: Nguyễn Bá Ngọc
+Lop: Khoa học máy tính-K68C                        | D9-301          | 2026-03-27 12:30:00.000000 | 2026-03-27 14:55:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168487_73e0d069b399ecb7         | HUST_CTT | [168487] Phân tích và thiết kế hệ thống         | Tuan 30
+Ma HP: IT3120
+GV: Nguyễn Bá Ngọc
+Lop: Khoa học máy tính-K68C                        | D9-301          | 2026-04-03 12:30:00.000000 | 2026-04-03 14:55:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168487_b46d60f290e4bce5         | HUST_CTT | [168487] Phân tích và thiết kế hệ thống         | Tuan 31
+Ma HP: IT3120
+GV: Nguyễn Bá Ngọc
+Lop: Khoa học máy tính-K68C                        | D9-301          | 2026-04-10 12:30:00.000000 | 2026-04-10 14:55:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168487_ecf367a21367bd93         | HUST_CTT | [168487] Phân tích và thiết kế hệ thống         | Tuan 32
+Ma HP: IT3120
+GV: Nguyễn Bá Ngọc
+Lop: Khoa học máy tính-K68C                        | D9-301          | 2026-04-17 12:30:00.000000 | 2026-04-17 14:55:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168487_81a2be2de5099cca         | HUST_CTT | [168487] Phân tích và thiết kế hệ thống         | Tuan 34
+Ma HP: IT3120
+GV: Nguyễn Bá Ngọc
+Lop: Khoa học máy tính-K68C                        | D9-301          | 2026-05-01 12:30:00.000000 | 2026-05-01 14:55:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168487_ebf76a5f6b9a88b9         | HUST_CTT | [168487] Phân tích và thiết kế hệ thống         | Tuan 35
+Ma HP: IT3120
+GV: Nguyễn Bá Ngọc
+Lop: Khoa học máy tính-K68C                        | D9-301          | 2026-05-08 12:30:00.000000 | 2026-05-08 14:55:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168487_1fe83715a474fb7f         | HUST_CTT | [168487] Phân tích và thiết kế hệ thống         | Tuan 36
+Ma HP: IT3120
+GV: Nguyễn Bá Ngọc
+Lop: Khoa học máy tính-K68C                        | D9-301          | 2026-05-15 12:30:00.000000 | 2026-05-15 14:55:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168487_de75b487a7fb3df7         | HUST_CTT | [168487] Phân tích và thiết kế hệ thống         | Tuan 37
+Ma HP: IT3120
+GV: Nguyễn Bá Ngọc
+Lop: Khoa học máy tính-K68C                        | D9-301          | 2026-05-22 12:30:00.000000 | 2026-05-22 14:55:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168487_0bdb78cb8d1cf83d         | HUST_CTT | [168487] Phân tích và thiết kế hệ thống         | Tuan 38
+Ma HP: IT3120
+GV: Nguyễn Bá Ngọc
+Lop: Khoa học máy tính-K68C                        | D9-301          | 2026-05-29 12:30:00.000000 | 2026-05-29 14:55:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168487_d437fd74d8ff812e         | HUST_CTT | [168487] Phân tích và thiết kế hệ thống         | Tuan 39
+Ma HP: IT3120
+GV: Nguyễn Bá Ngọc
+Lop: Khoa học máy tính-K68C                        | D9-301          | 2026-06-05 12:30:00.000000 | 2026-06-05 14:55:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168487_a1956419e480022b         | HUST_CTT | [168487] Phân tích và thiết kế hệ thống         | Tuan 40
+Ma HP: IT3120
+GV: Nguyễn Bá Ngọc
+Lop: Khoa học máy tính-K68C                        | D9-301          | 2026-06-12 12:30:00.000000 | 2026-06-12 14:55:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168487_a1003183f45c64a4         | HUST_CTT | [168487] Phân tích và thiết kế hệ thống         | Tuan 41
+Ma HP: IT3120
+GV: Nguyễn Bá Ngọc
+Lop: Khoa học máy tính-K68C                        | D9-301          | 2026-06-19 12:30:00.000000 | 2026-06-19 14:55:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168487_42bd053f38d3901a         | HUST_CTT | [168487] Phân tích và thiết kế hệ thống         | Tuan 42
+Ma HP: IT3120
+GV: Nguyễn Bá Ngọc
+Lop: Khoa học máy tính-K68C                        | D9-301          | 2026-06-26 12:30:00.000000 | 2026-06-26 14:55:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168501_adbd8af9e425c06c         | HUST_CTT | HOC BU: [168501] Nhập môn an toàn thông tin     | Hoc bu cho 16/04
+Ma HP: IT4015
+GV: Nguyễn Khanh Văn
+Lop: Kỹ thuật máy tính-K68S             | D9-205 (D9-205) | 2026-04-23 06:45:00.000000 | 2026-04-23 10:05:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 22:46:54
+hust_168501_e7c470dd852698c6         | HUST_CTT | [168501] Nhập môn an toàn thông tin             | Tuan 25
+Ma HP: IT4015
+GV: Nguyễn Khanh Văn
+Lop: Kỹ thuật máy tính-K68S                      | TC-312          | 2026-02-26 06:45:00.000000 | 2026-02-26 10:05:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168501_09259adb49bdedb8         | HUST_CTT | [168501] Nhập môn an toàn thông tin             | Tuan 26
+Ma HP: IT4015
+GV: Nguyễn Khanh Văn
+Lop: Kỹ thuật máy tính-K68S                      | TC-312          | 2026-03-05 06:45:00.000000 | 2026-03-05 10:05:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168501_676417948bf5153d         | HUST_CTT | [168501] Nhập môn an toàn thông tin             | Tuan 27
+Ma HP: IT4015
+GV: Nguyễn Khanh Văn
+Lop: Kỹ thuật máy tính-K68S                      | TC-312          | 2026-03-12 06:45:00.000000 | 2026-03-12 10:05:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168501_1b5a665548646ca6         | HUST_CTT | [168501] Nhập môn an toàn thông tin             | Tuan 28
+Ma HP: IT4015
+GV: Nguyễn Khanh Văn
+Lop: Kỹ thuật máy tính-K68S                      | TC-312          | 2026-03-19 06:45:00.000000 | 2026-03-19 10:05:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168501_bac004295b4f202b         | HUST_CTT | [168501] Nhập môn an toàn thông tin             | Tuan 29
+Ma HP: IT4015
+GV: Nguyễn Khanh Văn
+Lop: Kỹ thuật máy tính-K68S                      | TC-312          | 2026-03-26 06:45:00.000000 | 2026-03-26 10:05:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168501_be0f78f2a55c744f         | HUST_CTT | [168501] Nhập môn an toàn thông tin             | Tuan 30
+Ma HP: IT4015
+GV: Nguyễn Khanh Văn
+Lop: Kỹ thuật máy tính-K68S                      | TC-312          | 2026-04-02 06:45:00.000000 | 2026-04-02 10:05:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168501_d93edcda59480ba5         | HUST_CTT | [168501] Nhập môn an toàn thông tin             | Tuan 31
+Ma HP: IT4015
+GV: Nguyễn Khanh Văn
+Lop: Kỹ thuật máy tính-K68S                      | TC-312          | 2026-04-09 06:45:00.000000 | 2026-04-09 10:05:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168501_3125cb5293ac122e         | HUST_CTT | [168501] Nhập môn an toàn thông tin             | Tuan 34
+Ma HP: IT4015
+GV: Nguyễn Khanh Văn
+Lop: Kỹ thuật máy tính-K68S                      | TC-312          | 2026-04-30 06:45:00.000000 | 2026-04-30 10:05:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168501_c0f46a36f91c4495         | HUST_CTT | [168501] Nhập môn an toàn thông tin             | Tuan 35
+Ma HP: IT4015
+GV: Nguyễn Khanh Văn
+Lop: Kỹ thuật máy tính-K68S                      | TC-312          | 2026-05-07 06:45:00.000000 | 2026-05-07 10:05:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168501_0547bbca8c73a89e         | HUST_CTT | [168501] Nhập môn an toàn thông tin             | Tuan 36
+Ma HP: IT4015
+GV: Nguyễn Khanh Văn
+Lop: Kỹ thuật máy tính-K68S                      | TC-312          | 2026-05-14 06:45:00.000000 | 2026-05-14 10:05:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168501_20f8ba9a7fa755f9         | HUST_CTT | [168501] Nhập môn an toàn thông tin             | Tuan 37
+Ma HP: IT4015
+GV: Nguyễn Khanh Văn
+Lop: Kỹ thuật máy tính-K68S                      | TC-312          | 2026-05-21 06:45:00.000000 | 2026-05-21 10:05:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168501_e486be27cfde485f         | HUST_CTT | [168501] Nhập môn an toàn thông tin             | Tuan 38
+Ma HP: IT4015
+GV: Nguyễn Khanh Văn
+Lop: Kỹ thuật máy tính-K68S                      | TC-312          | 2026-05-28 06:45:00.000000 | 2026-05-28 10:05:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168501_b2ffa6d1906adefd         | HUST_CTT | [168501] Nhập môn an toàn thông tin             | Tuan 39
+Ma HP: IT4015
+GV: Nguyễn Khanh Văn
+Lop: Kỹ thuật máy tính-K68S                      | TC-312          | 2026-06-04 06:45:00.000000 | 2026-06-04 10:05:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168501_4d759d86b260e34e         | HUST_CTT | [168501] Nhập môn an toàn thông tin             | Tuan 40
+Ma HP: IT4015
+GV: Nguyễn Khanh Văn
+Lop: Kỹ thuật máy tính-K68S                      | TC-312          | 2026-06-11 06:45:00.000000 | 2026-06-11 10:05:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168501_08730ca2679bd80a         | HUST_CTT | [168501] Nhập môn an toàn thông tin             | Tuan 41
+Ma HP: IT4015
+GV: Nguyễn Khanh Văn
+Lop: Kỹ thuật máy tính-K68S                      | TC-312          | 2026-06-18 06:45:00.000000 | 2026-06-18 10:05:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_168501_3c8fd913fcf8c627         | HUST_CTT | [168501] Nhập môn an toàn thông tin             | Tuan 42
+Ma HP: IT4015
+GV: Nguyễn Khanh Văn
+Lop: Kỹ thuật máy tính-K68S                      | TC-312          | 2026-06-25 06:45:00.000000 | 2026-06-25 10:05:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_170311_064c218fb9497e7a         | HUST_CTT | [170311] Lịch sử Đảng cộng sản Việt Nam         | Tuan 25
+Ma HP: SSH1141
+GV: Lê Thị Lan
+Lop:                                                  | D3-5-501        | 2026-02-27 06:45:00.000000 | 2026-02-27 09:10:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_170311_7f2e83b1a2030a53         | HUST_CTT | [170311] Lịch sử Đảng cộng sản Việt Nam         | Tuan 27
+Ma HP: SSH1141
+GV: Lê Thị Lan
+Lop:                                                  | D3-5-501        | 2026-03-13 06:45:00.000000 | 2026-03-13 09:10:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_170311_b074c9ef77dd8802         | HUST_CTT | [170311] Lịch sử Đảng cộng sản Việt Nam         | Tuan 29
+Ma HP: SSH1141
+GV: Lê Thị Lan
+Lop:                                                  | D3-5-501        | 2026-03-27 06:45:00.000000 | 2026-03-27 09:10:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_170311_6d86792c80d4c338         | HUST_CTT | [170311] Lịch sử Đảng cộng sản Việt Nam         | Tuan 31
+Ma HP: SSH1141
+GV: Lê Thị Lan
+Lop:                                                  | D3-5-501        | 2026-04-10 06:45:00.000000 | 2026-04-10 09:10:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_170311_f21e920794bb1ce0         | HUST_CTT | [170311] Lịch sử Đảng cộng sản Việt Nam         | Tuan 34
+Ma HP: SSH1141
+GV: Lê Thị Lan
+Lop:                                                  | D3-5-501        | 2026-05-01 06:45:00.000000 | 2026-05-01 09:10:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_170311_7bfbabb8f45df029         | HUST_CTT | [170311] Lịch sử Đảng cộng sản Việt Nam         | Tuan 36
+Ma HP: SSH1141
+GV: Lê Thị Lan
+Lop:                                                  | D3-5-501        | 2026-05-15 06:45:00.000000 | 2026-05-15 09:10:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_170311_13642310cd1c022e         | HUST_CTT | [170311] Lịch sử Đảng cộng sản Việt Nam         | Tuan 38
+Ma HP: SSH1141
+GV: Lê Thị Lan
+Lop:                                                  | D3-5-501        | 2026-05-29 06:45:00.000000 | 2026-05-29 09:10:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+hust_170311_92c3a139a76ae410         | HUST_CTT | [170311] Lịch sử Đảng cộng sản Việt Nam         | Tuan 40
+Ma HP: SSH1141
+GV: Lê Thị Lan
+Lop:                                                  | D3-5-501        | 2026-06-12 06:45:00.000000 | 2026-06-12 09:10:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 19:55:06 | 2026-06-03 19:55:06
+14a0807e-9310-4023-ab08-4c43885a7743 | VOICE_AI | đá bóng                                         | NULL                                                                                        | NULL            | 2026-06-04 15:00:00.000000 | 2026-06-04 17:00:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 1            | 2026-06-03 21:30:09 | 2026-06-03 22:19:15
+d254575d-c809-4bce-890d-eef9db4cb586 | VOICE_AI | tap gym                                         | NULL                                                                                        | NULL            | 2026-06-04 08:00:00.000000 | 2026-06-04 10:00:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 0            | 2026-06-03 21:50:16 | 2026-06-03 21:50:16
+792322f5-feb5-4e0d-b942-e79c64ae39bf | VOICE_AI | đi đá bóng                                      | NULL                                                                                        | NULL            | 2026-06-04 16:00:00.000000 | 2026-06-04 17:00:00.000000 | Asia/Ho_Chi_Minh | 0            | NULL  | 1            | 2026-06-03 21:53:02 | 2026-06-03 22:47:54
+
+Tổng số dòng: 130
+
+================================================================================
+TABLE: device_event_shadow
+================================================================================
+
+device_id    | event_id                             | synced_at          
+-------------------------------------------------------------------------
+e072a1d6f1bc | hust_168510_a389d8a1c7c315ef         | 2026-06-03 19:56:11
+e072a1d6f1bc | hust_170313_861c42468d5c5e83         | 2026-06-03 19:56:11
+e072a1d6f1bc | hust_168506_34a78ecee43bf27e         | 2026-06-03 19:56:11
+e072a1d6f1bc | hust_168487_d437fd74d8ff812e         | 2026-06-03 19:56:11
+e072a1d6f1bc | hust_168501_b2ffa6d1906adefd         | 2026-06-03 19:56:11
+e072a1d6f1bc | 14a0807e-9310-4023-ab08-4c43885a7743 | 2026-06-03 21:30:10
+e072a1d6f1bc | d254575d-c809-4bce-890d-eef9db4cb586 | 2026-06-03 21:50:16
+e072a1d6f1bc | 792322f5-feb5-4e0d-b942-e79c64ae39bf | 2026-06-03 21:53:02
+
+Tổng số dòng: 8
+
+================================================================================
+TABLE: devices
+================================================================================
+
+id           | name    | status | last_offline_reason | last_seen                 
+----------------------------------------------------------------------------------
+e072a1d6f1bc | New mcu | online | connection_lost     | 2026-06-03 22:46:47.115733
+
+Tổng số dòng: 1
+
+================================================================================
+TABLE: telemetries
+================================================================================
+
+Bảng không có dữ liệu.
