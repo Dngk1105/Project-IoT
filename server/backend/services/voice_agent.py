@@ -12,6 +12,7 @@ from models.shadow import EndpointStateShadow
 from sqlalchemy import select
 from core.mqtt_client import publish_message
 from core.mqtt_protocol import PayloadBuilder
+from models.calendar import EventSource
 
 
 logger = get_logger(__name__, "voice_agent")
@@ -260,21 +261,42 @@ class VoiceAgentService:
 
         if intent == "DEVICE":
             ep_id = params.get("device_id")
+            start_time_str = params.get("start_time")
             if ep_id and action in ["TURN_ON", "TURN_OFF"]:
-                from core.mqtt_client import publish_message
-                from core.mqtt_protocol import PayloadBuilder
                 
-                cmd_data = {
-                    "ep_id": ep_id,
-                    "action": action
-                }
-                
-                target_topic = f"iot_schedule/{device_id}/shadow/update"
-                payload = PayloadBuilder.build_json(cmd_data)
-                
-                # Bắn lệnh không cần chờ (Fire & Forget)
-                publish_message(target_topic, payload, qos=2)
-                logger.info(f"[{device_id}] Đã ra lệnh {action} cho {ep_id}")
+                # Neu co hen gio thi luu vao database
+                if start_time_str:
+                    st = datetime.fromisoformat(start_time_str)
+                    
+                    # Ép payload MQTT vào trường summary của lịch
+                    cmd_payload = json.dumps({"ep_id": ep_id, "action": action})
+                    
+                    event_in = CalendarEventCreate(
+                        summary=cmd_payload,
+                        start_time=st,
+                        end_time=st + timedelta(minutes=1), # Lệnh chỉ trigger ở 1 khoảnh khắc
+                        rrule=params.get("rrule")
+                    )
+                    
+                    async with AsyncSessionLocal() as db:
+                        await crud_calendar.create_event(db, event_in, source=EventSource.DEVICE_TIMER)                        
+                        await push_sync_to_device(device_id)
+                        
+                    logger.info(f"[{device_id}] Hen gio thuc hien {action} cho {ep_id} lúc {st}")
+                else:
+                    cmd_data = {
+                        "ep_id": ep_id,
+                        "action": action
+                    }
+                    
+                    target_topic = f"iot_schedule/{device_id}/shadow/update"
+                    payload = PayloadBuilder.build_json(cmd_data)
+                    
+                    # Bắn lệnh không cần chờ (Fire & Forget)
+                    publish_message(target_topic, payload, qos=2)
+                    logger.info(f"[{device_id}] Đã ra lệnh {action} cho {ep_id}")
+                    
+                    
             else:
                 logger.error(f"[{device_id}] Thiếu tham số, không thể điều khiển thiết bị!")
 voice_agent = VoiceAgentService()

@@ -23,7 +23,7 @@ async def check_collision(db: AsyncSession, start_dt: datetime, end_dt: datetime
         logger.error(f"Loi check trung lich: {str(e)}")
         return []
 
-async def create_event(db: AsyncSession, event_in: CalendarEventCreate) -> CalendarEvent:
+async def create_event(db: AsyncSession, event_in: CalendarEventCreate, source: EventSource = EventSource.VOICE_AI) -> CalendarEvent:
     """Chuyen schema -> model va luu vao database"""
     try:
         #Kiem tra co phai dang tao mot su kien da bi soft delete
@@ -43,6 +43,8 @@ async def create_event(db: AsyncSession, event_in: CalendarEventCreate) -> Calen
             logger.warning(f"Phat hien trung {len(collisions)} lich cho su kien: {event_in.summary}")
         
         # Ép kiểu dữ liệu từ Pydantic Schema sang SQLAlchemy Model bằng model_dump()
+        event_data = event_in.model_dump()
+        event_data['source'] = source
         db_event = CalendarEvent(**event_in.model_dump())
         db.add(db_event)
         await db.commit()          # Lưu thay đổi xuống ổ cứng

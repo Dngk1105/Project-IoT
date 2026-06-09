@@ -11,7 +11,7 @@ Thời gian hệ thống hiện tại (ISO8601): {current_time}
 Nhiệm vụ: Phân tích ngữ cảnh hội thoại và trả về DUY NHẤT một payload JSON hợp lệ theo schema FSM (Finite State Machine) sau:
 {{
     "intent": "CALENDAR" | "DEVICE" | "SESSION" | "CHAT",
-    "action": "CREATE" | "UPDATE" | "DELETE" | "FIND_SLOT" | "READ" | "TURN_ON" | "TURN_OFF" | "CONFIRM" | "CANCEL" | "NONE",
+    "action": "CREATE" | "UPDATE" | "DELETE" | "FIND_SLOT" | "READ" | "CONFIRM" | "CANCEL" | "NONE" | "<LỆNH_TỪ_THIẾT_BỊ>",
     "parameters": {{}},
     "spoken_response": "Văn bản thô để đẩy xuống vi điều khiển phát I2S Audio"
 }}
@@ -23,7 +23,9 @@ CHI TIẾT MAPPING INTENT VÀ ACTION:
     - FIND_SLOT: Yêu cầu tìm lịch rảnh hoặc xếp lịch tự động. parameters BẮT BUỘC: {{"summary": "Tên sự kiện", "duration_minutes": số nguyên, "start_time": "ISO8601", "end_time": "ISO8601"}}. LƯU Ý: Phải tự nội suy start_time và end_time dựa trên thời gian hệ thống hiện tại nếu người dùng nói mơ hồ (VD: "ngày mai", "tuần sau").
     - READ: Yêu cầu xem, hỏi về lịch trình đã có (VD: "Hôm nay có môn gì?", "Mai có rảnh không?"). parameters BẮT BUỘC: {{"start_time": "ISO8601", "end_time": "ISO8601"}}. Tự tính toán khoảng thời gian quét dựa trên câu nói của người dùng và thời gian hệ thống hiện tại.
 2. DEVICE (Điều khiển ngoại vi phần cứng):
-    - TURN_ON / TURN_OFF: Bật/tắt thiết bị vật lý. parameters BẮT BUỘC: {{"device_id": "string"}}.
+    - action: BẮT BUỘC trích xuất chính xác từ mảng 'lenh ho tro' (supported_cmds) của thiết bị được cấp trong LƯU Ý NGỮ CẢNH (VD: TURN_ON, BLINK, READ...).
+    - parameters BẮT BUỘC: {{"device_id": "string"}}.
+    - THÔNG SỐ TÙY CHỌN NẾU HẸN GIỜ: {{"start_time": "ISO8601", "rrule": "string (tuỳ chọn iCal)"}}. LƯU Ý: Chỉ xuất start_time nếu người dùng nói rõ thời gian hẹn lệnh..
 
 3. SESSION (Quản lý luồng xác nhận State Machine):
     - CONFIRM: Người dùng đồng ý (ACK) với giao dịch (Tạo/Sửa/Xóa lịch, Bật/Tắt thiết bị) đang được treo ở trạng thái chờ trong LƯU Ý NGỮ CẢNH.

@@ -13,6 +13,7 @@ class EventSource(str, enum.Enum):
     HUST_CTT = "hust_ctt"
     VOICE_AI = "voice_ai"
     LOCAL = "local"
+    DEVICE_TIMER = "device_timer"
     
 class CalendarEvent(Base):
     """Bang luu tru cho su kien lich (calendar_events)"""
