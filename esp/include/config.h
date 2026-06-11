@@ -4,8 +4,10 @@
 /* =========================================================================
  * THÔNG SỐ MẠNG (WIFI)
  * ========================================================================= */
-#define WIFI_SSID               "TuDu"
-#define WIFI_PASSWORD           "11052005"
+// #define WIFI_SSID               "TuDu"
+// #define WIFI_PASSWORD           "11052005"
+#define WIFI_SSID               "DangDat"
+#define WIFI_PASSWORD           "15042005"
 #define WIFI_MAX_RETRY          5       // Số lần thử kết nối lại trước khi reset module
 
 /* Backoff reconnect */
@@ -16,7 +18,8 @@
  * THÔNG SỐ MQTT BROKER
  * ========================================================================= */
 //#define MQTT_BROKER_URI         "mqtt://192.168.0.102:1883" // IP của Server nội bộ
-#define MQTT_BROKER_URI         "mqtt://172.20.10.3:1883" // IP của Server nội bộ
+#define MQTT_BROKER_URI         "mqtt://192.168.1.2:1883"      // IP của Server nội bộ
+// #define MQTT_BROKER_URI         "mqtt://172.20.10.3:1883" // IP của Server nội bộ
 // #define MQTT_USERNAME        "admin"                    
 // #define MQTT_PASSWORD        "secret"
 #define MQTT_KEEPALIVE_SEC      10                          // Chu kỳ gửi Pingreq
@@ -30,6 +33,7 @@
 // --- Ngoại vi cơ bản ---
 #define PIN_BTN_WAKE            0       // Nút bấm vật lý (Boot button)
 #define PUSH_TO_TALK_BTN        GPIO_NUM_17      // An giu de stream am thanh
+#define LED_LIGHT_GPIO          GPIO_NUM_3       // Điều khiển LED
 
 // --- I2S Audio ---
 // I2S_NUM_0 — INMP441 Microphone (RX only)

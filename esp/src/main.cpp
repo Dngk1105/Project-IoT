@@ -13,6 +13,7 @@
 #include "audio_psram.h"
 #include "local_storage.h"
 #include "cJSON.h"
+#include "light_control.h"
 
 static const char *TAG = "MAIN_APP";
 
@@ -62,6 +63,7 @@ void app_logic_task(void *pvParameters) {
     time_core_init();
     audio_i2s_init();
     button_core_init();
+    light_control_init();
 
     //LitteFS 
     local_storage_init();

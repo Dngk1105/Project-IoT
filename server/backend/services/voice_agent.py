@@ -11,7 +11,7 @@ import crud.calendar as crud_calendar
 from models.shadow import EndpointStateShadow
 from sqlalchemy import select
 from core.mqtt_client import publish_message
-from core.mqtt_protocol import PayloadBuilder
+from core.mqtt_protocol import MqttTopics, PayloadBuilder
 from models.calendar import EventSource
 
 
@@ -291,9 +291,18 @@ class VoiceAgentService:
                     
                     target_topic = f"iot_schedule/{device_id}/shadow/update"
                     payload = PayloadBuilder.build_json(cmd_data)
+                    corr_id = f"sync_{uuid.uuid4().hex[:8]}"
+                    resp_topic = MqttTopics.ack(device_id, "shadow_response")
                     
                     # Bắn lệnh không cần chờ (Fire & Forget)
-                    publish_message(target_topic, payload, qos=2)
+                    publish_message(
+                        topic=target_topic,
+                        payload=payload,
+                        qos=2,
+                        response_topic = resp_topic,
+                        correlation_data = corr_id.encode('utf-8'),
+                        message_expiry_interval = 3600
+                    )
                     logger.info(f"[{device_id}] Đã ra lệnh {action} cho {ep_id}")
                     
                     

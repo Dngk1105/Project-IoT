@@ -61,11 +61,12 @@ class DeviceManagerService:
                     device.last_seen = datetime.now(timezone.utc)
                     
                 if status == "online":
+                    logger.info("Vào khối endpoint")
                     endpoints = core_data.get("endpoints")
                     if endpoints and isinstance(endpoints, list):
                         from models.shadow import EndpointStateShadow
                         import json
-                        
+                        logger.info("Nhận thông báo thiết bị ngoại vi từ ESp")
                         for ep in endpoints:
                             ep_id = ep.get("ep_id")
                             stmt_ep = select(EndpointStateShadow).where(
@@ -81,6 +82,7 @@ class DeviceManagerService:
                                 existing_ep.reported_state = ep.get("state", "UNKNOWN")
                                 existing_ep.name = ep.get("name", existing_ep.name)
                                 existing_ep.supported_cmds = cmds_str
+                                logger.info(f"[{existing_ep.reported_state}] EP tồn tại {existing_ep.name} {existing_ep.supported_cmds}")
                             else:
                                 new_ep = EndpointStateShadow(
                                     device_id=device_id,
@@ -91,6 +93,7 @@ class DeviceManagerService:
                                     reported_state=ep.get("state", "UNKNOWN")
                                 )
                                 session.add(new_ep)
+                                logger.info("Thêm EP vào Database")
 
                 await session.commit()
                 
@@ -160,26 +163,5 @@ class DeviceManagerService:
                 except Exception as e:
                     await session.rollback()
                     logger.error(f"[{device_id}] Lỗi DB khi lưu Telemetry: {e}", exc_info=True)
-        
-    async def process_device_shadow(self, device_id: str, action: str, payload: dict, publish_cb: Callable):
-        """Xu li trang thai thiet bi ngoai vi"""
-        core_data = payload.get("data", payload)
-        ep_id = core_data.get("ep_id")
-        new_state = core_data.get("reported_state")
-        
-        if ep_id and new_state:
-            async with AsyncSessionLocal() as session:
-                from models.shadow import EndpointStateShadow
-                stmt = select(EndpointStateShadow).where(
-                    EndpointStateShadow.device_id == device_id,
-                    EndpointStateShadow.ep_id == ep_id
-                )
-                result = await session.execute(stmt)
-                ep_record = result.scalar_one_or_none()
-                
-                if ep_record:
-                    ep_record.reported_state = new_state
-                    await session.commit()
-                    logger.info(f"[{device_id}] Cập nhật Shadow: {ep_id} -> {new_state}")
         
 device_manager_service = DeviceManagerService() # Doi tuong singleton duy nhat

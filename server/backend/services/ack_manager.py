@@ -1,4 +1,6 @@
 from typing import Callable
+
+from sqlalchemy import select
 from core.logger import get_logger
 from core.database import AsyncSessionLocal
 from models.shadow import DeviceEventShadow
@@ -32,6 +34,10 @@ class AckManagerService:
             else:
                 error_reason = payload.get("reason", "UNKNOWN_ERR")
                 logger.error(f"[{device_id}] Lỗi khi ghi Lịch học vào Flash! | Lý do: {error_reason}")
+        elif action == "shadow_response":
+            logger.info(f"[{device_id}] Câp nhật trạng thái Device Shadow")
+            await self.process_device_shadow(device_id, payload)
+                
         else:
             logger.info(f"Nhận ACK từ [{device_id}] cho tác vụ {action}: {payload}")
             
@@ -52,5 +58,26 @@ class AckManagerService:
             except Exception as e:
                 await session.rollback()
                 logger.error(f"[{device_id}] Lỗi nghiêm trọng khi cập nhật Shadow DB: {e}", exc_info=True)
+                
+    async def process_device_shadow(self, device_id: str,payload: dict):
+        """Xu li trang thai thiet bi ngoai vi"""
+        core_data = payload.get("data", payload)
+        ep_id = core_data.get("ep_id")
+        new_state = core_data.get("reported_state")
+        
+        if ep_id and new_state:
+            async with AsyncSessionLocal() as session:
+                from models.shadow import EndpointStateShadow
+                stmt = select(EndpointStateShadow).where(
+                    EndpointStateShadow.device_id == device_id,
+                    EndpointStateShadow.ep_id == ep_id
+                )
+                result = await session.execute(stmt)
+                ep_record = result.scalar_one_or_none()
+                
+                if ep_record:
+                    ep_record.reported_state = new_state
+                    await session.commit()
+                    logger.info(f"[{device_id}] Cập nhật Shadow: {ep_id} -> {new_state}")
 
 ack_manager_service = AckManagerService()

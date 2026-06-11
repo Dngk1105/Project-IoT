@@ -11,6 +11,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "cJSON.h"
+#include "light_control.h" // Thêm dòng này để gọi được các hàm điều khiển đèn
 
 static const char *TAG = "MQTT_HANDLER";
 
@@ -123,12 +124,27 @@ static void parse_json_envelope(const char *payload, mqtt_msg_type_t msg_type, c
                             action->valuestring, ep_id->valuestring, abs((int)(current_time - cmd_time)));
                 }else{
                     ESP_LOGI(TAG, "Thuc hien lenh cmd: %s -> %s", ep_id->valuestring, action->valuestring);
-                    //TODO: Phu viet ham thuc hien o day nhe
-                    // if (ep_id == led_1){
-                    //}
+
+                    //Điều khiển LED
+                    if (strcmp(ep_id->valuestring, "led_1") == 0) {
+                        ESP_LOGW(TAG, "Điều khiển LED: %s", action->valuestring);
+                        if (strcmp(action->valuestring, "TURN_ON") == 0) {
+                            light_control_set_state(true);
+                        } 
+                        else if (strcmp(action->valuestring, "TURN_OFF") == 0) {
+                            light_control_set_state(false);
+                        } 
+                        else {
+                            ESP_LOGW(TAG, "Hành động không hợp lệ cho led_1: %s", action->valuestring);
+                        }
+                    } 
+                    else {
+                        ESP_LOGW(TAG, "Không tìm thấy Endpoint ID: %s", ep_id->valuestring);
+                    }
 
                     // Trả ACK thành công để Server cập nhật trạng thái
                     if (resp_topic && strlen(resp_topic) > 0) {
+                        ESP_LOGI(TAG,"Respone cho lệnh điều khiển thiết bị %s", resp_topic);
                         cJSON *ack = cJSON_CreateObject();
                         cJSON_AddStringToObject(ack, "status", "success");
                         cJSON_AddStringToObject(ack, "ep_id", ep_id->valuestring);
@@ -285,7 +301,14 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
                 }
                 
                // Lệnh điều khiển Device Shadow
-                else if (strstr(event->topic, "/shadow/") != NULL) {
+                else if (strstr(event->topic, "/shadow") != NULL) {
+                    current_msg_type = MSG_TYPE_SHADOW;
+                    ESP_LOGI(TAG, "[SHADOW] Nhận lệnh điều khiển ngoại vi");
+                    // TODO: device_shadow_process_command(...)
+                }
+                
+                // Lệnh điều khiển Shadow Update
+                else if (strstr(event->topic, "/shadow/update") != NULL) {
                     current_msg_type = MSG_TYPE_SHADOW;
                     ESP_LOGI(TAG, "[SHADOW] Nhận lệnh điều khiển ngoại vi");
                     // TODO: device_shadow_process_command(...)
@@ -402,6 +425,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
                     break;
                 case MSG_TYPE_SYNC_SCHEDULE:
                 case MSG_TYPE_SHADOW:
+                    
                 case MSG_TYPE_TIME_SYNC:
                     // Cac goi tin JSON. Gia su goi < MQTT_BUFFER_IN_SIZE (Khong bam)
                     // Neu gui goi tin lon thi can noi vao 
