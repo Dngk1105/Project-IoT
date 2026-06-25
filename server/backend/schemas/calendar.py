@@ -67,7 +67,7 @@ class EventLiteESP32(BaseModel):
     
     a: Literal["CLASS", "MEET", "VOICE", "ALARM"] 
     
-    msg: str = Field(..., max_length=32, description="sieu ngan")
+    msg: str = Field(..., max_length=64, description="sieu ngan")
 
     @model_validator(mode='after')
     def validate_future_timestamp(self) -> 'EventLiteESP32':
