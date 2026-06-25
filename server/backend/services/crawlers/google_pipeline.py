@@ -49,7 +49,7 @@ def _sync_fetch_google_events(days_ahead=90):
                 raise FileNotFoundError(f"Khong tim thay {CREDENTIALS_FILE}. Vui long tai tu Google Cloud!")
             
             flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_FILE, SCOPES)
-            creds = flow.run_local_server(port=0)
+            creds = flow.run_local_server(port=10087)
         
         
         with open(TOKEN_FILE, 'w') as token:
