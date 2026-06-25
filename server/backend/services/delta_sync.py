@@ -91,7 +91,8 @@ class DeltaSyncService:
             EventSource.HUST_CTT: "CLASS",   # Lich hoc tren truong -> Hien thi icon/chuong lop hoc
             EventSource.GOOGLE: "MEET",      # Lich Google -> Hien thi icon hop hoac nhac viec
             EventSource.VOICE_AI: "VOICE",   # Lich tu giong noi -> Hien thi icon AI/Mic
-            EventSource.LOCAL: "ALARM"       # Lich tao thu cong -> Hien thi icon bao thuc
+            EventSource.LOCAL: "ALARM",      # Lich tao thu cong -> Hien thi icon bao thuc
+            EventSource.DEVICE_TIMER: "DEVICE_CMD"
         }
         
         # Lay ma hanh dong, mac dinh la ALARM neu khong khop
@@ -101,7 +102,7 @@ class DeltaSyncService:
             id=ev.id,
             t=int(ev.start_time.timestamp()),
             a=esp32_action,
-            msg=ev.summary[:30] # Cat chu de tranh tran vung nho
+            msg=ev.summary[:64] # Cat chu de tranh tran vung nho
         )
         return lite.model_dump()
 

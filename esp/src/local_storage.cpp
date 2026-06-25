@@ -113,7 +113,7 @@ void local_storage_init(){
                 strncpy(event_cache[event_count].id, cJSON_GetObjectItem(item, "id")->valuestring, 39);
                 event_cache[event_count].timestamp = (uint32_t)cJSON_GetObjectItem(item, "t")->valuedouble;
                 event_cache[event_count].action = action_str_to_enum(cJSON_GetObjectItem(item, "a")->valuestring);
-                strncpy(event_cache[event_count].msg, cJSON_GetObjectItem(item, "msg")->valuestring, 35);
+                strncpy(event_cache[event_count].msg, cJSON_GetObjectItem(item, "msg")->valuestring, 64);
 
                 event_count++;
             }
@@ -181,7 +181,7 @@ bool local_storage_sync_schedule(cJSON *delta_data) {
                 strncpy(event_cache[found_idx].id, id, 39);
                 event_cache[found_idx].timestamp = (uint32_t)cJSON_GetObjectItem(item, "t")->valuedouble;
                 event_cache[found_idx].action = action_str_to_enum(cJSON_GetObjectItem(item, "a")->valuestring);
-                strncpy(event_cache[found_idx].msg, cJSON_GetObjectItem(item, "msg")->valuestring, 35);
+                strncpy(event_cache[found_idx].msg, cJSON_GetObjectItem(item, "msg")->valuestring, 64);
                 
                 cache_changed = true;
             }

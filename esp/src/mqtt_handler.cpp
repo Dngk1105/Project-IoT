@@ -225,7 +225,8 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
             cJSON_AddStringToObject(ep1, "ep_id", "led_1");
             cJSON_AddStringToObject(ep1, "type", "light");
             cJSON_AddStringToObject(ep1, "name", "Den led 1");
-            cJSON_AddStringToObject(ep1, "state", "OFF");
+            bool state = light_control_get_state();
+            cJSON_AddStringToObject(ep1, "state", state ? "ON" : "OFF");
             cJSON_AddItemToArray(endpoints, ep1);
             cJSON* cmds = cJSON_CreateArray();
             cJSON_AddItemToArray(cmds, cJSON_CreateString("TURN_ON"));

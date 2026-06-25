@@ -70,7 +70,7 @@ class EventLiteESP32(BaseModel):
     id: str
     t: int = Field(..., description="UNIX Timestamp")
     
-    a: Literal["CLASS", "MEET", "VOICE", "ALARM"] 
+    a: Literal["CLASS", "MEET", "VOICE", "ALARM", "DEVICE_CMD"] 
     
     msg: str = Field(..., max_length=64, description="sieu ngan")
 

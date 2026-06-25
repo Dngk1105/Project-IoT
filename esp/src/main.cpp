@@ -101,9 +101,29 @@ void app_logic_task(void *pvParameters) {
 
                             if (next_event.action == ACTION_DEVICE){
                                 ESP_LOGI(TAG, "ĐẾN GIỜ HẸN! Thực thi lệnh: %s", next_event.msg);
-                                // Parse JSON trong next_event.msg và điều khiển GPIO
-                                // ...
-                                // Báo cáo Telemetry về Server
+                                char ep_id[16], action[16];
+                                int ret = sscanf(next_event.msg, "{\"ep_id\": \"%15[^\"]\", \"action\": \"%15[^\"]\"}", ep_id, action);
+                                if (ret == 2){
+                                    ESP_LOGI(TAG, "EP_ID: %s | ACTION: %s", ep_id, action);
+                                    if (strcmp(ep_id, "led_1") == 0){
+                                        bool turn_on = (strcmp(action, "TURN_ON") == 0) ? 1 : 0;
+                                        light_control_set_state(turn_on);
+
+                                        char shadow_topic[64];
+                                        snprintf(shadow_topic, 64, "iot_schedule/%s/shadow/update", mqtt_get_device_id());
+                                        ESP_LOGI(TAG,"Bao cao da thuc hien dieu khien thiet bi EP_ID: %s | ACTION: %s", ep_id, action);
+                                        cJSON *shadow = cJSON_CreateObject();
+                                        cJSON_AddStringToObject(shadow, "status", "success");
+                                        cJSON_AddStringToObject(shadow, "ep_id", ep_id);
+                                        cJSON_AddStringToObject(shadow, "reported_state", action);
+                                        
+                                        char *shadow_str = cJSON_PrintUnformatted(shadow);
+                                        mqtt_handler_publish(shadow_topic, shadow_str, strlen(shadow_str), 1, 0, 0);
+                                        free(shadow_str);
+                                        cJSON_Delete(shadow);
+                                    }
+                                }
+
                                 local_storage_remove_event(next_event.id);
                             } else{
                                 // Xin audio 

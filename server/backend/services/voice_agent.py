@@ -306,7 +306,8 @@ class VoiceAgentService:
                         summary=cmd_payload,
                         start_time=st,
                         end_time=st + timedelta(minutes=1), # Lệnh chỉ trigger ở 1 khoảnh khắc
-                        rrule=params.get("rrule")
+                        rrule=params.get("rrule"),
+                        source= EventSource.DEVICE_TIMER
                     )
                     
                     async with AsyncSessionLocal() as db:

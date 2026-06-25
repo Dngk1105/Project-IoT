@@ -23,7 +23,7 @@ typedef struct {
     char id[40];           // UUID (36 ký tự + null)
     uint32_t timestamp;    // Giờ UNIX (t)
     event_action_t action; // Loại sự kiện (a)
-    char msg[36];          // Tiêu đề ngắn gọn (msg)
+    char msg[64];          // Tiêu đề ngắn gọn (msg)
 } esp_calendar_event_t;
 
 /* =========================================================================
