@@ -105,11 +105,11 @@ class AudioEngineService:
             logger.info("Whisper nhan dien giong noi thanh van ban:")
             logger.info(user_text);
             
-            spoken_text, require_confirmation = await voice_agent.process_user_intent(device_id, user_text)
+            spoken_text, keep_mic_open = await voice_agent.process_user_intent(device_id, user_text)
             await self.stream_audio_to_device(device_id, spoken_text, publish_cb, session_id)
             
-            # Truyen co require_confirmation xuong finish_session de ESP32 biet duong bat lai Mic
-            await self.finish_session(device_id, publish_cb, session_id, keep_listening=require_confirmation)
+            # Truyen co keep_mic_open xuong finish_session de ESP32 biet duong bat lai Mic
+            await self.finish_session(device_id, publish_cb, session_id, keep_listening=keep_mic_open)
             
             
         except Exception as e:
@@ -187,6 +187,11 @@ class AudioEngineService:
     async def finish_session(self, device_id: str, publish_cb, session_id: str, keep_listening: bool = False):
         """Esp32 ve IDLE"""
         control_topic = MqttTopics.audio_control(device_id)
+        
+        if not keep_listening:
+            voice_agent.clear_session(device_id)
+            
+            
         idle_data = AudioControlServer(
             action="idle",
             session_id=session_id,
@@ -195,39 +200,4 @@ class AudioEngineService:
         idle_payload = PayloadBuilder.build_json(data=idle_data)
         publish_cb(control_topic, idle_payload, qos=1)
 
-
-    
-    async def _execute_pending_transaction(self, device_id: str, pending_state: dict, publish_cb):
-        """Hàm private xử lý Commit thực sự vào DB/Broker sau khi có xác nhận"""
-        intent = pending_state["intent"]
-        action = pending_state["action"]
-        params = pending_state["params"]
-        if intent == "CALENDAR":
-            async with AsyncSessionLocal() as db:
-                try:
-                    sync_needed = False
-                    if action == "CREATE":
-                        # Validate qua Schema
-                        event_in = CalendarEventCreate(**params)
-                        await crud_calendar.create_event(db, event_in)
-                        sync_needed = True
-                    elif action == "UPDATE":
-                        if "id" in params:
-                            event_update = CalendarEventUpdate(**params)
-                            await crud_calendar.update_event(db, params["id"], event_update)
-                            sync_needed = True
-                    elif action == "DELETE":
-                        if "id" in params:
-                            await crud_calendar.delete_event(db, params["id"])
-                            sync_needed = True
-                            
-                    if sync_needed:
-                        await push_sync_to_device(device_id, db)
-                        logger.info(f"[{device_id}] Commit DB thành công. Bắn Delta Sync (QoS 2).")
-                except Exception as e:
-                    logger.error(f"[{device_id}] Lỗi DB Transaction: {e}")
-                    
-        elif intent == "DEVICE":
-            # Xử lý bắn Device Shadow payload
-            pass
 audio_engine_service = AudioEngineService()

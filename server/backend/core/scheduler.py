@@ -33,10 +33,13 @@ async def push_sync_to_device(device_id: str, db_session=None):
             logger.info(f"[{device_id}] Lich khong thay doi. Bo qua publish ESP32 de tiet kiem tai nguyen.")
             return
 
-        pending_ids = [ev["id"] for ev in delta_data["add"]] + [ev["id"] for ev in delta_data["upd"]]
+        sync_payload = {
+            "upsert_ids": [ev["id"] for ev in delta_data["add"]] + [ev["id"] for ev in delta_data["upd"]],
+            "delete_ids": delta_data["del"]
+        }
         
         corr_id = f"sync_{uuid.uuid4().hex[:8]}"
-        PENDING_ACKS[corr_id] = pending_ids
+        PENDING_ACKS[corr_id] = sync_payload
         
         payload = PayloadBuilder.build_delta_sync(
             msg_id=f"sync_now_{int(time.time())}",

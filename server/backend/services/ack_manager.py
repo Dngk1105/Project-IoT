@@ -1,9 +1,11 @@
 from typing import Callable
 
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from core.logger import get_logger
 from core.database import AsyncSessionLocal
 from models.shadow import DeviceEventShadow
+from models.calendar import CalendarEvent
+from services.device_manager import DeviceManagerService
 
 logger = get_logger(__name__, "ack_manager.log")
 
@@ -24,11 +26,10 @@ class AckManagerService:
             if status == "success":
                 logger.info(f"[{device_id}] Ghi tkb thanh cong vao Flash (Correlation: {correlation_id})")
                 
-                if correlation_id in PENDING_ACKS:
-                    synced_ids = PENDING_ACKS.pop(correlation_id, [])
+                sync_payload = PENDING_ACKS.pop(correlation_id, None)
                 
-                if synced_ids:
-                    await self._update_shadow_db(device_id, synced_ids)
+                if sync_payload:
+                    await self._update_shadow_db(device_id, sync_payload)
                 else:
                     logger.warning(f"[{device_id}] nhan ACK nhung khong thay Correlation ID {correlation_id} trong cache")
             else:
@@ -36,48 +37,42 @@ class AckManagerService:
                 logger.error(f"[{device_id}] Lỗi khi ghi Lịch học vào Flash! | Lý do: {error_reason}")
         elif action == "shadow_response":
             logger.info(f"[{device_id}] Câp nhật trạng thái Device Shadow")
-            await self.process_device_shadow(device_id, payload)
+            device_service = DeviceManagerService()
+            await device_service.process_device_shadow(device_id, action, payload, publish_cb)
                 
         else:
             logger.info(f"Nhận ACK từ [{device_id}] cho tác vụ {action}: {payload}")
             
-    async def _update_shadow_db(self, device_id: str, synced_ids: list):
+    async def _update_shadow_db(self, device_id: str, sync_payload: list):
         """Hàm ghi/cập nhật mốc thời gian đồng bộ vào bảng DeviceEventShadow"""
         async with AsyncSessionLocal() as session:
             try:
-                for event_id in synced_ids:
+                upsert_ids = sync_payload.get("upsert_ids", [])
+                delete_ids = sync_payload.get("delete_ids", [])
+                
+                for event_id in upsert_ids:
+                    event = await session.get(CalendarEvent, event_id)
+                    if not event:
+                        continue
                     shadow_entry = DeviceEventShadow(
                         device_id=device_id,
-                        event_id=event_id
+                        event_id=event_id,
+                        synced_at=event.updated_at
                     )
                     await session.merge(shadow_entry)
                 
+                if delete_ids:
+                    stmt = delete(DeviceEventShadow).where(
+                        DeviceEventShadow.device_id == device_id,
+                        DeviceEventShadow.event_id.in_(delete_ids)
+                    )
+                    await session.execute(stmt)
+                
                 await session.commit()
-                logger.info(f"[{device_id}] Da cap nhat Shadow DB cho {len(synced_ids)} sự kiện.")
+                logger.info(f"[{device_id}] Da cap nhat Shadow DB: UPSERT {len(upsert_ids)} | DELETE {len(delete_ids)}.")
                 
             except Exception as e:
                 await session.rollback()
                 logger.error(f"[{device_id}] Lỗi nghiêm trọng khi cập nhật Shadow DB: {e}", exc_info=True)
-                
-    async def process_device_shadow(self, device_id: str,payload: dict):
-        """Xu li trang thai thiet bi ngoai vi"""
-        core_data = payload.get("data", payload)
-        ep_id = core_data.get("ep_id")
-        new_state = core_data.get("reported_state")
-        
-        if ep_id and new_state:
-            async with AsyncSessionLocal() as session:
-                from models.shadow import EndpointStateShadow
-                stmt = select(EndpointStateShadow).where(
-                    EndpointStateShadow.device_id == device_id,
-                    EndpointStateShadow.ep_id == ep_id
-                )
-                result = await session.execute(stmt)
-                ep_record = result.scalar_one_or_none()
-                
-                if ep_record:
-                    ep_record.reported_state = new_state
-                    await session.commit()
-                    logger.info(f"[{device_id}] Cập nhật Shadow: {ep_id} -> {new_state}")
 
 ack_manager_service = AckManagerService()
