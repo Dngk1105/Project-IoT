@@ -19,7 +19,7 @@
 /* =========================================================================
  * THÔNG SỐ MQTT BROKER
  * ========================================================================= */
-#define MQTT_BROKER_URI         "mqtt://192.168.0.102:1883" // IP của Server nội bộ
+#define MQTT_BROKER_URI         "mqtt://192.168.0.101:1883" // IP của Server nội bộ
 // #define MQTT_BROKER_URI         "mqtt://192.168.1.2:1883"      // IP của Server nội bộ
 // #define MQTT_BROKER_URI         "mqtt://172.20.10.3:1883" // IP của Server nội bộ
 // #define MQTT_USERNAME        "admin"                    
@@ -39,9 +39,9 @@
 
 // --- I2S Audio ---
 // I2S_NUM_0 — INMP441 Microphone (RX only)
-#define I2S_MIC_BCLK            11      // Bit Clock Mic
-#define I2S_MIC_WS              10      // Word Select Mic
-#define I2S_MIC_SD              9      // Data từ Mic
+#define I2S_MIC_BCLK            12      // Bit Clock Mic
+#define I2S_MIC_WS              11      // Word Select Mic
+#define I2S_MIC_SD              10     // Data từ Mic
 
 // I2S_NUM_1 — MAX98357A Speaker (TX only)
 // Cắm thêm 2 dây: GPIO17 → BCLK loa, GPIO18 → LRC loa
@@ -66,7 +66,7 @@
 #define PSRAM_BUFFER_MAX 2048 * 1024
 
 // VAD Tuning
-#define VAD_AMPLITUDE_THRESHOLD     600
+#define VAD_AMPLITUDE_THRESHOLD     300
 #define VAD_SILENCE_TIMEOUT_MS      1200     // Sau khi đã nói
 #define VAD_INITIAL_TIMEOUT_MS      5000     // Trước khi nói (timeout ban đầu)
 
