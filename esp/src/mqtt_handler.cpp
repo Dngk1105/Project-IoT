@@ -393,8 +393,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
                                             }
                                             
                                             if (keep_listening) {
-                                                ESP_LOGI(TAG, "He thong dang cho xac nhan, TU DONG MO LAI MIC!");
-                                                request_app_state(STATE_STREAM_UP); 
+                                                ESP_LOGI(TAG, "He thong dang cho xac nhan, TU DONG MO LAI MIC!"); 
                                             } else {
                                                 ESP_LOGI(TAG, "Chuyen ve IDLE");
                                                 request_app_state(STATE_IDLE);
