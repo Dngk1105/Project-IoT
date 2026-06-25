@@ -43,6 +43,7 @@ def get_logger(module_name: str, log_file: str = "system.log") -> logging.Logger
     logger = logging.getLogger(module_name)
     if logger.hasHandlers():    #Tranh logger duoc tao nhieu lan
         return logger
+    logger.propagate = False #Tranh gọi lên logger cha
     logger.setLevel(logging.INFO) #Ghi nhan log tu INFOR->Warning->...
     
     #[Thời gian] | [Mức độ] | [Tên File] - [Nội dung]
