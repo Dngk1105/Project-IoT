@@ -12,7 +12,7 @@ class CalendarEventBase(BaseModel):
     
     # Bắt buộc chuỗi thời gian gửi lên phải có Timezone
     start_time: AwareDatetime
-    end_time: AwareDatetime
+    end_time: Optional[AwareDatetime] = None
     
     is_recurring: bool = False
     rrule: Optional[str] = Field(None, max_length=255, description="Luật lặp lại iCal (VD: FREQ=WEEKLY)")
@@ -20,8 +20,13 @@ class CalendarEventBase(BaseModel):
 
     @model_validator(mode='after')
     def validate_time_range(self) -> 'CalendarEventBase':
-        if self.start_time >= self.end_time:
-            raise ValueError('end_time bắt buộc phải diễn ra sau start_time')
+        if self.start_time is not None:
+            if self.end_time is None:
+                from datetime import timedelta
+                self.end_time = self.start_time + timedelta(minutes=15)
+            else:
+                if self.start_time >= self.end_time:
+                    raise ValueError('end_time bắt buộc phải diễn ra sau start_time')
         return self
     
     @field_validator("start_time", "end_time", mode="before")

@@ -7,7 +7,6 @@ from datetime import datetime, timezone
 from core.logger import get_logger
 from core.mqtt_protocol import MqttTopics, PayloadBuilder
 from core.database import AsyncSessionLocal
-from core.scheduler import push_sync_to_device
 from models.device import Device
 from models.telemetry import Telemetry
 from models.shadow import EndpointStateShadow
@@ -97,6 +96,7 @@ class DeviceManagerService:
                 
                 if status == "online":
                     logger.info(f"[{device_id}] Bắt đầu đồng bộ lịch trình xuống ESP32...")
+                    from core.scheduler import push_sync_to_device
                     await push_sync_to_device(device_id, session)
             except Exception as e:
                 await session.rollback()
@@ -162,7 +162,7 @@ class DeviceManagerService:
                     await session.rollback()
                     logger.error(f"[{device_id}] Lỗi DB khi lưu Telemetry: {e}", exc_info=True)
                     
-    async def process_device_shadow(self, device_id: str,payload: dict):
+    async def process_device_shadow(self, device_id: str, action: str, payload: dict, publish_cb: Callable):
         """Xu li trang thai thiet bi ngoai vi"""
         core_data = payload.get("data", payload)
         ep_id = core_data.get("ep_id")
