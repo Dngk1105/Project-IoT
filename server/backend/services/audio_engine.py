@@ -3,6 +3,7 @@ import asyncio
 import uuid
 import time
 import json
+import wave
 import numpy as np
 from datetime import datetime
 from integrations.stt_client import stt_api
@@ -72,6 +73,18 @@ class AudioEngineService:
         """stop_stream"""
         audio_data = bytes(self._audio_buffers.get(device_id, b""))
         self._audio_buffers[device_id] = bytearray()   #reset
+            
+        # # ===== Xuất file để debug =====
+        # debug_filename = f"debug_{device_id}_{uuid.uuid4().hex[:8]}.wav"
+
+        # with wave.open(debug_filename, "wb") as wf:
+        #     wf.setnchannels(1)       # mono
+        #     wf.setsampwidth(2)       # int16 = 2 bytes
+        #     wf.setframerate(16000)   # sửa theo sample rate thực tế của bạn
+        #     wf.writeframes(audio_data)
+
+        # print(f"[DEBUG] Saved audio file: {debug_filename}")
+        # # ==============================
 
         drop_session = f"drop_{uuid.uuid4().hex[:8]}"
         audio_np = np.frombuffer(audio_data, dtype=np.int16)
