@@ -6,8 +6,10 @@
  * ========================================================================= */
 // #define WIFI_SSID               "TuDu"
 // #define WIFI_PASSWORD           "11052005"
-#define WIFI_SSID               "DangDat"
-#define WIFI_PASSWORD           "15042005"
+// #define WIFI_SSID               "DangDat"
+// #define WIFI_PASSWORD           "15042005"
+#define WIFI_SSID               "TP-Link_BA00"
+#define WIFI_PASSWORD           "98755370"
 #define WIFI_MAX_RETRY          5       // Số lần thử kết nối lại trước khi reset module
 
 /* Backoff reconnect */
@@ -17,8 +19,8 @@
 /* =========================================================================
  * THÔNG SỐ MQTT BROKER
  * ========================================================================= */
-//#define MQTT_BROKER_URI         "mqtt://192.168.0.102:1883" // IP của Server nội bộ
-#define MQTT_BROKER_URI         "mqtt://192.168.1.2:1883"      // IP của Server nội bộ
+#define MQTT_BROKER_URI         "mqtt://192.168.0.102:1883" // IP của Server nội bộ
+// #define MQTT_BROKER_URI         "mqtt://192.168.1.2:1883"      // IP của Server nội bộ
 // #define MQTT_BROKER_URI         "mqtt://172.20.10.3:1883" // IP của Server nội bộ
 // #define MQTT_USERNAME        "admin"                    
 // #define MQTT_PASSWORD        "secret"
@@ -32,19 +34,19 @@
  * ========================================================================= */
 // --- Ngoại vi cơ bản ---
 #define PIN_BTN_WAKE            0       // Nút bấm vật lý (Boot button)
-#define PUSH_TO_TALK_BTN        GPIO_NUM_17      // An giu de stream am thanh
-#define LED_LIGHT_GPIO          GPIO_NUM_3       // Điều khiển LED
+#define PUSH_TO_TALK_BTN        GPIO_NUM_3      // An giu de stream am thanh
+#define LED_LIGHT_GPIO          GPIO_NUM_14       // Điều khiển LED
 
 // --- I2S Audio ---
 // I2S_NUM_0 — INMP441 Microphone (RX only)
-#define I2S_MIC_BCLK            14      // Bit Clock Mic
-#define I2S_MIC_WS              13      // Word Select Mic
-#define I2S_MIC_SD              12      // Data từ Mic
+#define I2S_MIC_BCLK            11      // Bit Clock Mic
+#define I2S_MIC_WS              10      // Word Select Mic
+#define I2S_MIC_SD              9      // Data từ Mic
 
 // I2S_NUM_1 — MAX98357A Speaker (TX only)
 // Cắm thêm 2 dây: GPIO17 → BCLK loa, GPIO18 → LRC loa
-#define I2S_SPK_BCLK            4      // Bit Clock Loa
-#define I2S_SPK_WS              5      // Word Select Loa
+#define I2S_SPK_BCLK            7      // Bit Clock Loa
+#define I2S_SPK_WS              15      // Word Select Loa
 #define I2S_SPK_SD              6      // Data vào Loa
 
 /* =========================================================================
@@ -64,7 +66,7 @@
 #define PSRAM_BUFFER_MAX 2048 * 1024
 
 // VAD Tuning
-#define VAD_AMPLITUDE_THRESHOLD     200
+#define VAD_AMPLITUDE_THRESHOLD     600
 #define VAD_SILENCE_TIMEOUT_MS      1200     // Sau khi đã nói
 #define VAD_INITIAL_TIMEOUT_MS      5000     // Trước khi nói (timeout ban đầu)
 
