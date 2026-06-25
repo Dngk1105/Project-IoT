@@ -2,10 +2,10 @@ from fastapi_mqtt import FastMQTT, MQTTConfig
 from gmqtt import Client as MQTTClient
 from typing import Any, Dict, Callable
 import json
-import logging
+from core.logger import get_logger
 import time
 
-logger = logging.getLogger(__name__) #ghi log
+logger = get_logger("mqtt_client", "mqtt_client.log") #ghi log
 
 mqtt_config = MQTTConfig(
     host="127.0.0.1",
