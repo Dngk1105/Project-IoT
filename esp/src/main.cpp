@@ -116,6 +116,7 @@ void app_logic_task(void *pvParameters) {
                                         cJSON_AddStringToObject(shadow, "status", "success");
                                         cJSON_AddStringToObject(shadow, "ep_id", ep_id);
                                         cJSON_AddStringToObject(shadow, "reported_state", action);
+                                        cJSON_AddStringToObject(shadow, "event_id", next_event.id);
                                         
                                         char *shadow_str = cJSON_PrintUnformatted(shadow);
                                         mqtt_handler_publish(shadow_topic, shadow_str, strlen(shadow_str), 1, 0, 0);

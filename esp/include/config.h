@@ -6,10 +6,12 @@
  * ========================================================================= */
 // #define WIFI_SSID               "TuDu"
 // #define WIFI_PASSWORD           "11052005"
+#define WIFI_SSID               "Pb (2)"
+#define WIFI_PASSWORD           "25110110"
 // #define WIFI_SSID               "DangDat"
 // #define WIFI_PASSWORD           "15042005"
-#define WIFI_SSID               "TP-Link_BA00"
-#define WIFI_PASSWORD           "98755370"
+// #define WIFI_SSID               "TP-Link_BA00"
+// #define WIFI_PASSWORD           "98755370"
 #define WIFI_MAX_RETRY          5       // Số lần thử kết nối lại trước khi reset module
 
 /* Backoff reconnect */
@@ -19,9 +21,9 @@
 /* =========================================================================
  * THÔNG SỐ MQTT BROKER
  * ========================================================================= */
-#define MQTT_BROKER_URI         "mqtt://192.168.0.101:1883" // IP của Server nội bộ
+// #define MQTT_BROKER_URI         "mqtt://192.168.0.101:1883" // IP của Server nội bộ
 // #define MQTT_BROKER_URI         "mqtt://192.168.1.2:1883"      // IP của Server nội bộ
-// #define MQTT_BROKER_URI         "mqtt://172.20.10.3:1883" // IP của Server nội bộ
+#define MQTT_BROKER_URI         "mqtt://172.20.10.10:1883" // IP của Server nội bộ
 // #define MQTT_USERNAME        "admin"                    
 // #define MQTT_PASSWORD        "secret"
 #define MQTT_KEEPALIVE_SEC      10                          // Chu kỳ gửi Pingreq

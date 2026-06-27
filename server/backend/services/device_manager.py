@@ -167,10 +167,13 @@ class DeviceManagerService:
         core_data = payload.get("data", payload)
         ep_id = core_data.get("ep_id")
         new_state = core_data.get("reported_state")
+        event_id = core_data.get("event_id")
         
         if ep_id and new_state:
             async with AsyncSessionLocal() as session:
                 from models.shadow import EndpointStateShadow
+                import crud.calendar as crud_calendar
+                from core.scheduler import push_sync_to_device
                 stmt = select(EndpointStateShadow).where(
                     EndpointStateShadow.device_id == device_id,
                     EndpointStateShadow.ep_id == ep_id
@@ -182,5 +185,12 @@ class DeviceManagerService:
                     ep_record.reported_state = new_state
                     await session.commit()
                     logger.info(f"[{device_id}] Cập nhật Shadow: {ep_id} -> {new_state}")
+                    
+                    if event_id:
+                        await crud_calendar.delete_event(session, event_id)
+                        logger.info(f"[{device_id}] Đã dọn rác thành công event hẹn giờ: {event_id}")
+                        await push_sync_to_device(device_id)
+                else:
+                    logger.warning(f"[{device_id}] Không tìm thấy endpoint: {ep_id} trong DB")
         
 device_manager_service = DeviceManagerService() # Doi tuong singleton duy nhat
